@@ -1,0 +1,145 @@
+# ============================================================
+# Solana Meme Bot — Konfigurasi Utama
+# Semua nilai non-rahasia. Rahasia ada di .env
+# ============================================================
+
+bot:
+  mode: PAPER                    # Di-override oleh env BOT_MODE
+  live_confirm_required: true    # LIVE butuh konfirmasi manual
+  log_level: INFO
+
+# --- MODUL 1: Deteksi Token ---
+detection:
+  poll_interval_sec: 8
+  sources:
+    dexscreener:
+      enabled: true
+      base_url: "https://api.dexscreener.com/latest"
+      chains: ["solana"]
+    birdeye:
+      enabled: true
+      base_url: "https://public-api.birdeye.so"
+    helius_ws:
+      enabled: true
+  filters:
+    min_liquidity_usd: 5000
+    max_token_age_sec: 21600     # Token < 6 jam (termasuk yang baru lulus Pump.fun -> Raydium/PumpSwap)
+    min_volume_usd: 1000
+    dexes: ["raydium", "pumpfun"]
+
+# --- MODUL 2: Screening Keamanan ---
+screening:
+  top10_holder_max_pct: 50.0     # Top 10 holder (diluar LP) maks 50%
+  min_liquidity_usd: 10000
+  lp_must_be_burned_or_locked: true
+  max_sell_tax_pct: 5.0
+  max_transfer_fee_pct: 3.0
+  rugcheck:
+    enabled: true
+    min_score: 50                # Skor RugCheck minimum
+  deployer_check:
+    enabled: true
+    max_rugged_deploys: 1        # Deployer dengan >1 rug = skip
+  pumpfun:                       # Gate khusus token Pump.fun (...pump)
+    enabled: true
+    top10_holder_max_pct: 35.0   # Lebih ketat dari 50% (anti dev-bundle)
+    min_curve_mcap_usd: 35000    # Masih di bonding curve -> wajib "King of the Hill"
+    min_age_sec: 120             # Lewati 2 menit pertama (jendela bundle/sniper)
+    block_bundle_risks: true     # Tolak jika RugCheck deteksi bundle/insider
+    max_m5_dump_pct: -25.0       # Tolak jika harga 5m <= -25% & sell > buy (dev dump)
+
+# --- MODUL 3: Scoring & Entry ---
+scoring:
+  threshold: 0.65
+  weights:
+    price_momentum: 0.25
+    volume_liquidity_ratio: 0.20
+    holder_growth: 0.20
+    buy_sell_ratio: 0.20
+    token_age: 0.15
+  # Rentang min/max untuk tiap bobot (pagar dari optimizer)
+  weight_bounds:
+    price_momentum: [0.10, 0.40]
+    volume_liquidity_ratio: [0.10, 0.35]
+    holder_growth: [0.10, 0.35]
+    buy_sell_ratio: [0.10, 0.35]
+    token_age: [0.05, 0.25]
+
+# --- Eksekusi ---
+execution:
+  max_slippage_bps: 500          # 5%
+  priority_fee:
+    strategy: dynamic            # 'dynamic' | 'fixed'
+    fixed_lamports: 10000
+    dynamic_percentile: 75       # Persentil dari recent fees
+  max_retries: 3
+  retry_delay_ms: 1000
+  use_jito_bundle: true
+  jito_tip_lamports: 10000
+  paper_sol_price_usd: 150.0     # Referensi SOL/USD untuk simulasi PAPER
+
+# --- MODUL 4: Posisi ---
+position:
+  max_position_pct: 2.0          # Maks 2% dari modal per trade
+  max_position_sol: 0.5          # Batas absolut SOL per trade
+  max_open_positions: 5
+  take_profit:
+    - pct: 50                    # Saat naik 50%, jual 30%
+      sell_pct: 30
+    - pct: 100                   # Saat naik 100%, jual 30%
+      sell_pct: 30
+    - pct: 200                   # Saat naik 200%, jual sisanya
+      sell_pct: 100
+  stop_loss_pct: -30.0
+  trailing_stop:
+    activation_pct: 30.0         # Aktif setelah naik 30%
+    trail_pct: 20.0              # Trail 20% dari puncak
+  time_stop_minutes: 60          # Keluar jika flat selama 60 menit
+  emergency:
+    liquidity_drop_pct: 50.0     # Exit jika likuiditas turun 50%
+    rug_indicators:
+      - "large_sell_deployer"
+      - "lp_removed"
+      - "mint_enabled"
+
+# --- MODUL 5: Risk Control ---
+risk:
+  daily_loss_limit_sol: 2.0
+  max_drawdown_pct: 15.0
+  circuit_breaker:
+    consecutive_failures: 3
+    pause_duration_sec: 300      # Jeda 5 menit
+  kill_switch_file: "./KILL_SWITCH"
+
+# --- MODUL 6: Logging & Telegram ---
+telegram:
+  enabled: false                 # Set true setelah config token & chat ID
+  notify_on:
+    - entry
+    - exit
+    - error
+    - risk_limit
+    - daily_report
+
+logging:
+  file: "./logs/bot.log"
+  max_bytes: 10485760            # 10MB
+  backup_count: 5
+  format: "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+
+# --- MODUL 7: Learning ---
+learning:
+  analysis_interval_hours: 24
+  min_trades_for_proposal: 20
+  max_param_change_pct: 10.0     # Maks 10% perubahan per siklus
+  auto_apply_in_paper: true
+  require_manual_approval: false
+  backtest:
+    walk_forward_splits: 5
+    out_of_sample_pct: 30
+    min_sample_trades: 30
+
+# --- Database ---
+database:
+  path: "./data/bot.db"
+  wal_mode: true                 # Write-Ahead Logging for concurrency

@@ -1,0 +1,2477 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trading Desk — Solana Meme Bot</title>
+  <style>
+    :root {
+      --bg-black: #05070b;
+      --bg-surface: #0d1117;
+      --bg-card: #131822;
+      --bg-card-elevated: #1a2130;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-bright: rgba(255, 255, 255, 0.15);
+      --text-main: #ffffff;
+      --text-sub: #8b95a7;
+      --text-muted: #596375;
+      --green: #19fb9b;
+      --green-soft: rgba(25, 251, 155, 0.14);
+      --green-border: rgba(25, 251, 155, 0.38);
+      --red: #ff4d6d;
+      --red-soft: rgba(255, 77, 109, 0.15);
+      --red-border: rgba(255, 77, 109, 0.38);
+      --amber: #f59e0b;
+      --amber-soft: rgba(245, 158, 11, 0.16);
+      --purple: #a855f7;
+      --cyan: #22d3ee;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-black);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      padding-bottom: 92px;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    .mono {
+      font-family: "JetBrains Mono", "SF Mono", Consolas, monospace;
+    }
+
+    /* Main Responsive Desk Wrapper */
+    .desk-shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 14px 20px 30px;
+    }
+    .desk-grid {
+      display: grid;
+      grid-template-columns: 1.25fr 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 920px) {
+      .desk-grid {
+        grid-template-columns: 1fr;
+      }
+      .desk-shell {
+        max-width: 500px;
+        padding: 12px 14px 30px;
+      }
+    }
+
+    /* Top Floating Event Banner (Like 00:01 & 00:09 in video) */
+    .top-event-toast {
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-130%);
+      background: rgba(22, 28, 40, 0.96);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-bright);
+      border-radius: 999px;
+      padding: 8px 16px 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 200;
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.75);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      max-width: 92vw;
+      white-space: nowrap;
+    }
+    .top-event-toast.visible {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Top Bar (Trading Desk Pill + Live Indicator) */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0 18px;
+      gap: 10px;
+    }
+    .circle-icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.15s;
+    }
+    .circle-icon-btn:hover {
+      background: var(--bg-card-elevated);
+      border-color: var(--border-bright);
+    }
+
+    .desk-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      padding: 6px 16px 6px 8px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .desk-pill:hover {
+      background: var(--bg-card-elevated);
+      border-color: var(--border-bright);
+    }
+    .avatar-stack {
+      display: flex;
+      align-items: center;
+    }
+    .avatar-stack span {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 800;
+      margin-right: -7px;
+      border: 2px solid var(--bg-card);
+    }
+    .desk-pill-title {
+      font-weight: 700;
+      font-size: 15px;
+      margin-left: 10px;
+      letter-spacing: -0.01em;
+    }
+
+    .live-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 14px;
+      border-radius: 999px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 10px var(--green);
+      animation: pulseGlow 1.8s infinite;
+    }
+    .pulse-dot.paper {
+      background: var(--cyan);
+      box-shadow: 0 0 10px var(--cyan);
+    }
+    .pulse-dot.halted {
+      background: var(--red);
+      box-shadow: 0 0 10px var(--red);
+    }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.85); }
+    }
+
+    /* Hero Portfolio Value Section */
+    .hero-status-line {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      color: var(--text-sub);
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .hero-equity-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .hero-amount {
+      font-size: 52px;
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      line-height: 1.05;
+      font-variant-numeric: tabular-nums;
+      cursor: pointer;
+    }
+    .hero-gain-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+      margin-bottom: 14px;
+    }
+    .hero-gain-text {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--green);
+      font-variant-numeric: tabular-nums;
+    }
+    .hero-gain-text.neg {
+      color: var(--red);
+    }
+    .mult-badge {
+      background: var(--green-soft);
+      color: var(--green);
+      border: 1px solid var(--green-border);
+      font-weight: 800;
+      font-size: 13px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-variant-numeric: tabular-nums;
+    }
+    .mult-badge.neg {
+      background: var(--red-soft);
+      color: var(--red);
+      border-color: var(--red-border);
+    }
+
+    /* Chart Box with Floating Callouts */
+    .chart-stage {
+      position: relative;
+      width: 100%;
+      height: 220px;
+      margin: 6px 0 10px;
+    }
+    canvas#equityCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .chart-callouts-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .chart-pill {
+      position: absolute;
+      transform: translate(-50%, -115%);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px 4px 5px;
+      border-radius: 999px;
+      background: rgba(15, 20, 30, 0.92);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55);
+      transition: all 0.25s ease;
+    }
+    .chart-pill.win {
+      border-color: var(--green-border);
+      color: var(--green);
+    }
+    .chart-pill.stop {
+      border-color: var(--red-border);
+      color: var(--red);
+    }
+    .chart-pill.buy {
+      border-color: rgba(255, 255, 255, 0.28);
+      color: #ffffff;
+    }
+
+    /* Timeframe Selector Row */
+    .tf-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 0 18px;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 20px;
+    }
+    .tf-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-sub);
+      font-weight: 700;
+      font-size: 12px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .tf-btn.active {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+    .tf-btn:hover:not(.active) {
+      color: var(--text-main);
+    }
+
+    /* Section Headers */
+    .sec-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .sec-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .sec-meta {
+      font-size: 13px;
+      color: var(--text-sub);
+      font-weight: 600;
+    }
+
+    /* "Bots" Horizontal Cards Strip */
+    .bots-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(205px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 920px) {
+      .bots-strip {
+        display: flex;
+        overflow-x: auto;
+        padding-bottom: 6px;
+        scroll-snap-type: x mandatory;
+      }
+      .bots-strip::-webkit-scrollbar { height: 4px; }
+      .bots-strip::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+      .bot-card {
+        min-width: 225px;
+        scroll-snap-align: start;
+      }
+    }
+    .bot-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 152px;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+    .bot-card:hover {
+      border-color: var(--border-bright);
+      transform: translateY(-1px);
+    }
+    .bot-card-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .bot-role-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+    .bot-role-name {
+      font-weight: 700;
+      font-size: 14px;
+      line-height: 1.2;
+    }
+    .bot-role-status {
+      font-size: 12px;
+      color: var(--green);
+      font-weight: 600;
+    }
+    .bot-card-mid {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .bot-card-foot {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .mini-pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-sub);
+    }
+    .mini-pill.green {
+      background: var(--green-soft);
+      color: var(--green);
+      border: 1px solid var(--green-border);
+    }
+    .mini-pill.red {
+      background: var(--red-soft);
+      color: var(--red);
+    }
+    .mini-pill.amber {
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+    .mini-pill.full {
+      width: 100%;
+      text-align: center;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    /* Analyst Circular Score Gauge */
+    .score-gauge {
+      position: relative;
+      width: 58px;
+      height: 58px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .score-gauge svg {
+      transform: rotate(-90deg);
+      width: 58px;
+      height: 58px;
+    }
+    .score-gauge-num {
+      position: absolute;
+      font-weight: 800;
+      font-size: 17px;
+      color: #ffffff;
+    }
+
+    /* Avatars */
+    .tok-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      flex-shrink: 0;
+    }
+    .tok-avatar.sm {
+      width: 22px;
+      height: 22px;
+    }
+    .tok-avatar.md {
+      width: 34px;
+      height: 34px;
+    }
+    .tok-fallback {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #19fb9b, #06b6d4, #8b5cf6);
+      color: #05070b;
+      font-weight: 800;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .tok-fallback.sm {
+      width: 22px;
+      height: 22px;
+      font-size: 9px;
+    }
+    .tok-fallback.md {
+      width: 34px;
+      height: 34px;
+      font-size: 11px;
+    }
+
+    /* Open Positions & Activity Rows */
+    .list-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 18px;
+      padding: 6px 14px;
+      margin-bottom: 24px;
+    }
+    .pos-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 4px;
+      border-bottom: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: background 0.15s;
+      border-radius: 10px;
+    }
+    .pos-row:last-child { border-bottom: none; }
+    .pos-row:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .pos-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+      flex: 1;
+    }
+    .pos-left-info {
+      min-width: 0;
+      flex: 1;
+    }
+    .pos-title-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 5px;
+    }
+    .pos-symbol {
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text-main);
+    }
+    .stop-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: var(--red-soft);
+      color: var(--red);
+    }
+    .stop-tag.entry {
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+    .pos-sub {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-top: 3px;
+      line-height: 1.45;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+    }
+    .pos-right {
+      text-align: right;
+      flex-shrink: 0;
+      padding-left: 12px;
+    }
+    .pos-val {
+      font-weight: 800;
+      font-size: 17px;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+    }
+    .pos-pct {
+      font-size: 12.5px;
+      font-weight: 700;
+      margin-top: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+    .pos-pct.pos { color: var(--green); }
+    .pos-pct.neg { color: var(--red); }
+
+    .pos-metrics-grid {
+      margin-top: 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px 16px;
+    }
+    @media (min-width: 540px) {
+      .pos-metrics-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+    .pos-metric-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .pos-metric-lbl {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-sub);
+    }
+    .pos-metric-val {
+      font-size: 12.5px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .pos-actions-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .pos-action-btn {
+      padding: 6px 13px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: transform 0.12s, opacity 0.12s;
+    }
+    .pos-action-btn:hover {
+      transform: translateY(-1px);
+      opacity: 0.95;
+    }
+
+    /* Context Menu Popover for Open Position (00:03-00:04 in video) */
+    .backdrop-blur {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 7, 11, 0.76);
+      backdrop-filter: blur(12px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 150;
+      padding: 20px;
+    }
+    .backdrop-blur.open {
+      display: flex;
+    }
+    .pos-context-box {
+      width: 100%;
+      max-width: 380px;
+    }
+    .pos-Selected-preview {
+      background: var(--bg-card-elevated);
+      border: 1px solid var(--border-bright);
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+    }
+    .ctx-menu-card {
+      background: var(--bg-card-elevated);
+      border: 1px solid var(--border-bright);
+      border-radius: 18px;
+      overflow: hidden;
+      width: 250px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75);
+    }
+    .ctx-item {
+      width: 100%;
+      padding: 13px 16px;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      font-size: 14px;
+      font-weight: 600;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      cursor: pointer;
+    }
+    .ctx-item:last-child { border-bottom: none; }
+    .ctx-item:hover { background: rgba(255, 255, 255, 0.06); }
+    .ctx-item.danger { color: var(--red); }
+
+    /* Bottom Floating Toast Pill ("WTAIL stop moved to entry") */
+    .bottom-pill-toast {
+      position: fixed;
+      bottom: 84px;
+      left: 50%;
+      transform: translateX(-50%) translateY(30px);
+      opacity: 0;
+      pointer-events: none;
+      background: rgba(24, 30, 44, 0.96);
+      border: 1px solid var(--border-bright);
+      padding: 9px 18px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 190;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+      transition: all 0.25s ease;
+    }
+    .bottom-pill-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Bottom Message / Command Bar */
+    .bottom-bar-wrap {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(180deg, rgba(5,7,11,0) 0%, rgba(5,7,11,0.95) 35%, #05070b 100%);
+      padding: 12px 18px 16px;
+      z-index: 100;
+    }
+    .bottom-bar {
+      max-width: 680px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .cmd-input-wrap {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 999px;
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .cmd-input {
+      background: transparent;
+      border: none;
+      color: var(--text-main);
+      font-size: 14px;
+      width: 100%;
+      outline: none;
+    }
+    .cmd-input::placeholder { color: var(--text-muted); }
+
+    /* Control & Mode Drawer Modal */
+    .drawer-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-bright);
+      border-radius: 20px;
+      max-width: 660px;
+      width: 100%;
+      padding: 22px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .settings-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .settings-tab-btn {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-sub);
+      padding: 7px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .settings-tab-btn.active {
+      background: var(--green-soft);
+      color: var(--green);
+      border-color: var(--green-border);
+    }
+    .settings-pane {
+      display: none;
+    }
+    .settings-pane.active {
+      display: block;
+    }
+    .cfg-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 520px) {
+      .cfg-grid { grid-template-columns: 1fr; }
+    }
+    .cfg-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .cfg-field label {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-sub);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .cfg-input {
+      background: #05070b;
+      border: 1px solid var(--border-bright);
+      color: var(--text-main);
+      padding: 8px 11px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-family: "JetBrains Mono", monospace;
+      outline: none;
+      width: 100%;
+    }
+    .cfg-input:focus {
+      border-color: var(--green);
+    }
+    .cfg-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-main);
+      cursor: pointer;
+      padding: 6px 0;
+    }
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .desk-btn {
+      padding: 9px 15px;
+      border-radius: 12px;
+      border: 1px solid var(--border-bright);
+      background: var(--bg-card-elevated);
+      color: var(--text-main);
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      flex: 1;
+      text-align: center;
+    }
+    .desk-btn.green {
+      background: var(--green);
+      color: #05070b;
+      border-color: var(--green);
+    }
+    .desk-btn.red {
+      background: var(--red-soft);
+      color: var(--red);
+      border-color: var(--red-border);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP FLOATING BUY/SELL EVENT NOTIFICATION PILL -->
+  <div class="top-event-toast" id="topEventToast">
+    <span id="topEventAvatar"></span>
+    <div>
+      <div style="font-size:13px; font-weight:700;" id="topEventTitle">Sold CLAWD</div>
+      <div style="font-size:11px; color:var(--text-sub);" id="topEventSub">at $518K MC • <span style="color:var(--green);">+$131.40 (+65.7%)</span></div>
+    </div>
+  </div>
+
+  <!-- MAIN TRADING DESK CONTAINER -->
+  <div class="desk-shell">
+
+    <!-- TOP HEADER BAR -->
+    <header class="topbar">
+      <button class="circle-icon-btn" onclick="openControlDrawer()" title="Pengaturan Mode & Self-Learning">
+        ☰
+      </button>
+
+      <div class="desk-pill" onclick="openControlDrawer()">
+        <div class="avatar-stack">
+          <span style="background:#f59e0b; color:#000;">⚡</span>
+          <span style="background:#ef4444; color:#fff;">🛡️</span>
+          <span style="background:#3b82f6; color:#fff;">🏦</span>
+        </div>
+        <span class="desk-pill-title">Trading Desk ⌄</span>
+      </div>
+
+      <div class="live-pill" onclick="openControlDrawer()" title="Klik untuk ganti PAPER / LIVE atau Start/Pause">
+        <span class="pulse-dot" id="headerPulseDot"></span>
+        <span id="headerModeLabel">Live</span>
+      </div>
+    </header>
+
+    <div class="desk-grid">
+      <!-- LEFT COLUMN: HERO EQUITY + CHART + BOTS -->
+      <div>
+        <!-- HERO EQUITY SECTION -->
+        <div class="hero-status-line">
+          <span style="font-weight:800; color:#fff;">◎ solana</span>
+          <span id="heroConnText">connected • 0 open positions • 10.00 SOL</span>
+        </div>
+
+        <div class="hero-equity-row">
+          <div class="hero-amount" id="heroUsdAmount" onclick="toggleCurrencyDisplay()" title="Klik untuk tukar tampilan utama USD / SOL">
+            $1,500.00
+          </div>
+        </div>
+
+        <div class="hero-gain-row">
+          <span class="hero-gain-text" id="heroGainText">▲ $0.00 (0.00%)</span>
+          <span class="mult-badge" id="heroMultBadge">1.00x</span>
+          <span style="font-size:12px; color:var(--text-sub); margin-left:auto;" class="mono" id="heroSolSub">10.0000 SOL</span>
+        </div>
+
+        <!-- EQUITY CHART + FLOATING CALLOUT PILLS -->
+        <div class="chart-stage">
+          <canvas id="equityCanvas"></canvas>
+          <div class="chart-callouts-layer" id="chartCalloutsLayer"></div>
+        </div>
+
+        <!-- TIMEFRAME BAR -->
+        <div class="tf-bar">
+          <button class="tf-btn active" onclick="setChartRange('LIVE', this)">● LIVE</button>
+          <button class="tf-btn" onclick="setChartRange('1H', this)">1H</button>
+          <button class="tf-btn" onclick="setChartRange('4H', this)">4H</button>
+          <button class="tf-btn" onclick="setChartRange('1D', this)">1D</button>
+          <button class="tf-btn" onclick="setChartRange('1W', this)">1W</button>
+          <button class="tf-btn" onclick="setChartRange('ALL', this)">ALL</button>
+        </div>
+
+        <!-- BOTS SECTION (Analyst, Sniper, Risk, Banker) -->
+        <div class="sec-head">
+          <span class="sec-title">Bots</span>
+          <span class="sec-meta" id="botsRunningLabel">5 running</span>
+        </div>
+
+        <div class="bots-strip">
+          <!-- BOT 1: ANALYST (Scoring Ring Gauge) -->
+          <div class="bot-card">
+            <div class="bot-card-top">
+              <div class="bot-role-icon" style="background:rgba(168,85,247,0.18); color:#c084fc;">〰</div>
+              <div>
+                <div class="bot-role-name">Analyst</div>
+                <div class="bot-role-status" style="color:#c084fc;">• Scoring</div>
+              </div>
+            </div>
+            <div class="bot-card-mid" id="analystMidBox">
+              <div class="score-gauge">
+                <svg viewBox="0 0 60 60">
+                  <circle cx="30" cy="30" r="24" stroke="rgba(255,255,255,0.1)" stroke-width="5" fill="none" />
+                  <circle id="analystGaugeArc" cx="30" cy="30" r="24" stroke="#f59e0b" stroke-width="5" fill="none"
+                    stroke-dasharray="150.8" stroke-dashoffset="42" stroke-linecap="round" />
+                </svg>
+                <span class="score-gauge-num" id="analystScoreNum">72</span>
+              </div>
+              <div style="min-width:0;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span id="analystTokenAvatar"></span>
+                  <span style="font-weight:700; font-size:14px;" id="analystTokenSym">SCAN</span>
+                </div>
+                <div style="font-size:12px; color:var(--text-sub); margin-top:2px;" id="analystTokenSub">scoring...</div>
+              </div>
+            </div>
+            <div class="bot-card-foot">
+              <span class="mini-pill" id="analystThresholdPill">min score 72</span>
+              <span class="mini-pill green" id="analystVersionPill">v1.3</span>
+            </div>
+          </div>
+
+          <!-- BOT 2: SNIPER (Entry Execution) -->
+          <div class="bot-card">
+            <div class="bot-card-top">
+              <div class="bot-role-icon" style="background:rgba(245,158,11,0.18); color:#fbbf24;">⚡</div>
+              <div>
+                <div class="bot-role-name">Sniper</div>
+                <div class="bot-role-status" id="sniperTradesCount">• 0 trades</div>
+              </div>
+            </div>
+            <div class="bot-card-mid">
+              <span id="sniperAvatarBox"></span>
+              <div style="min-width:0;">
+                <div style="font-weight:700; font-size:14px;" id="sniperTokenSym">Waiting...</div>
+                <div style="font-size:12px; color:var(--text-sub);" id="sniperTokenSub">Ready on Raydium/Pump</div>
+              </div>
+            </div>
+            <div class="bot-card-foot">
+              <span class="mini-pill green full" id="sniperStatusPill">✓ Filled • 0.4s</span>
+            </div>
+          </div>
+
+          <!-- BOT 3: RISK (Stop-Loss & Trailing Guard) -->
+          <div class="bot-card">
+            <div class="bot-card-top">
+              <div class="bot-role-icon" style="background:rgba(255,77,109,0.18); color:#ff4d6d;">🛡️</div>
+              <div>
+                <div class="bot-role-name">Risk</div>
+                <div class="bot-role-status">• Guarding</div>
+              </div>
+            </div>
+            <div class="bot-card-mid">
+              <span id="riskAvatarBox"></span>
+              <div style="min-width:0;">
+                <div style="font-weight:700; font-size:14px;" id="riskTitleText">Watching</div>
+                <div style="font-size:12px; color:var(--text-sub);" id="riskSubText">All gates active</div>
+              </div>
+            </div>
+            <div class="bot-card-foot">
+              <span class="mini-pill red" id="riskStopPill">stop -30%</span>
+              <span class="mini-pill green" id="riskTrailPill">trail 15%</span>
+            </div>
+          </div>
+
+          <!-- BOT 4: BANKER (Take-Profit & Realized Gains) -->
+          <div class="bot-card">
+            <div class="bot-card-top">
+              <div class="bot-role-icon" style="background:rgba(59,130,246,0.18); color:#60a5fa;">🏦</div>
+              <div>
+                <div class="bot-role-name">Banker</div>
+                <div class="bot-role-status" id="bankerLockedText">• $0 locked</div>
+              </div>
+            </div>
+            <div class="bot-card-mid">
+              <span id="bankerAvatarBox"></span>
+              <div style="min-width:0;">
+                <div style="font-weight:700; font-size:14px;">Took profit</div>
+                <div style="font-size:12px; color:var(--green);" id="bankerLastWinSub">Ready to harvest</div>
+              </div>
+            </div>
+            <div class="bot-card-foot">
+              <span class="mini-pill green" id="bankerNetProfitPill">+$0</span>
+              <span class="mini-pill" id="bankerWinsPill">0 wins</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: OPEN POSITIONS + ACTIVITY FEED -->
+      <div>
+        <!-- OPEN POSITIONS -->
+        <div class="sec-head">
+          <span class="sec-title">Open positions</span>
+          <span class="sec-meta" id="openPositionsRatio">0 of 5</span>
+        </div>
+
+        <div class="list-card" id="openPositionsContainer">
+          <div style="padding:20px 8px; text-align:center; color:var(--text-sub); font-size:13px;">
+            No open positions right now. Sniper is scanning new Solana pools...
+          </div>
+        </div>
+
+        <!-- ACTIVITY FEED -->
+        <div class="sec-head">
+          <span class="sec-title">Activity</span>
+          <span class="sec-meta" style="cursor:pointer;" onclick="openControlDrawer()">See all</span>
+        </div>
+
+        <div class="list-card" id="activityFeedContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTEXT MENU POPOVER FOR OPEN POSITION (Exact match to 00:03-00:04 in video) -->
+  <div class="backdrop-blur" id="posContextModal" onclick="closePosContextModal(event)">
+    <div class="pos-context-box" onclick="event.stopPropagation()">
+      <div class="pos-Selected-preview" id="ctxSelectedPreview"></div>
+      <div class="ctx-menu-card">
+        <button class="ctx-item" id="ctxViewDexBtn">
+          <span>🌐</span> View on DexScreener
+        </button>
+        <button class="ctx-item" id="ctxMoveStopBtn">
+          <span>🛡️</span> Move stop to entry
+        </button>
+        <button class="ctx-item" id="ctxSellHalfBtn">
+          <span>⚡</span> Sell 50% now
+        </button>
+        <button class="ctx-item danger" id="ctxSellFullBtn">
+          <span>↗</span> Sell now
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTROL & FULL SERVER SETTINGS DRAWER MODAL -->
+  <div class="backdrop-blur" id="controlDrawerModal" onclick="closeControlDrawer(event)">
+    <div class="drawer-card" onclick="event.stopPropagation()">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div>
+          <h3 style="font-size:18px; font-weight:800;">⚙️ Server & Strategy Control Center</h3>
+          <div style="font-size:11.5px; color:var(--text-sub); margin-top:2px;">Semua pengaturan langsung tersimpan ke <span class="mono">config.yaml</span> & <span class="mono">.env</span> di server</div>
+        </div>
+        <button class="circle-icon-btn" style="width:32px; height:32px;" onclick="closeControlDrawer()">✕</button>
+      </div>
+
+      <!-- 5 Navigation Tabs -->
+      <div class="settings-tabs">
+        <button class="settings-tab-btn active" onclick="switchSettingsTab('tabModeCap', this)">1. Mode & Modal</button>
+        <button class="settings-tab-btn" onclick="switchSettingsTab('tabPosExec', this)">2. Posisi, TP/SL & Eksekusi</button>
+        <button class="settings-tab-btn" onclick="switchSettingsTab('tabScreenPump', this)">3. Deteksi & Pump.fun Gate</button>
+        <button class="settings-tab-btn" onclick="switchSettingsTab('tabScoreRisk', this)">4. Scoring, Risk & AI</button>
+        <button class="settings-tab-btn" onclick="switchSettingsTab('tabServerEnv', this)">5. Server, RPC, Wallet & TG</button>
+      </div>
+
+      <!-- TAB 1: MODE, MODAL & ENGINE -->
+      <div class="settings-pane active" id="tabModeCap">
+        <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:14px; padding:14px; margin-bottom:14px;">
+          <div style="font-size:12px; color:var(--text-sub); font-weight:700; text-transform:uppercase;">Execution Mode</div>
+          <div class="btn-row">
+            <button class="desk-btn" id="drawerBtnPaper" onclick="switchMode('PAPER')">🧪 PAPER (Simulasi)</button>
+            <button class="desk-btn red" id="drawerBtnLive" onclick="promptSwitchToLive()">⚡ LIVE (Real SOL)</button>
+          </div>
+          <div id="liveConfirmBox" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid var(--border-subtle);">
+            <div style="font-size:12px; color:var(--amber); margin-bottom:6px;">
+              Ketik <b>I ACCEPT REAL FINANCIAL RISK</b> untuk konfirmasi dana nyata:
+            </div>
+            <input type="text" id="drawerLivePhrase" class="cfg-input" style="margin-bottom:8px;" placeholder="I ACCEPT REAL FINANCIAL RISK" />
+            <button class="desk-btn red" style="width:100%;" onclick="confirmSwitchToLive()">Aktifkan LIVE Sekarang</button>
+          </div>
+        </div>
+
+        <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:14px; padding:14px; margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div style="font-size:12px; color:var(--text-sub); font-weight:700; text-transform:uppercase;">Modal Awal & Dynamic Entry Sizing</div>
+            <span class="mini-pill green" id="drawerNextEntryBadge">Entry: 0.0100 SOL (2%)</span>
+          </div>
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <input type="number" step="0.1" min="0.05" id="drawerCapitalInput" class="cfg-input" placeholder="Contoh: 0.5" />
+            <button class="desk-btn green" style="flex:0 0 auto; padding:8px 16px;" onclick="applyCustomCapital()">Set Modal</button>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="mini-pill" style="cursor:pointer; border:1px solid var(--border-bright);" onclick="setQuickCapital(0.5)">0.5 SOL</button>
+            <button class="mini-pill" style="cursor:pointer; border:1px solid var(--border-bright);" onclick="setQuickCapital(1.0)">1.0 SOL</button>
+            <button class="mini-pill" style="cursor:pointer; border:1px solid var(--border-bright);" onclick="setQuickCapital(2.0)">2.0 SOL</button>
+            <button class="mini-pill" style="cursor:pointer; border:1px solid var(--border-bright);" onclick="setQuickCapital(5.0)">5.0 SOL</button>
+            <button class="mini-pill" style="cursor:pointer; border:1px solid var(--border-bright);" onclick="setQuickCapital(10.0)">10.0 SOL</button>
+          </div>
+          <div style="font-size:11px; color:var(--text-sub); margin-top:8px;">
+            Ukuran beli otomatis mengikuti <b><span id="drawerPosPctText">2.0</span>% dari Live Equity</b> saat ini.
+          </div>
+        </div>
+
+        <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:14px; padding:14px; margin-bottom:14px;">
+          <div style="font-size:12px; color:var(--text-sub); font-weight:700; text-transform:uppercase;">Bot Engine & Self-Learning (Modul 7)</div>
+          <div class="btn-row">
+            <button class="desk-btn green" id="drawerToggleScanBtn" onclick="toggleBotEngine()">⏸ Pause Auto-Scan</button>
+            <button class="desk-btn" onclick="runSingleCycleNow()">🔍 Scan 1x</button>
+          </div>
+          <div class="btn-row">
+            <button class="desk-btn" onclick="triggerLearnNow()">🧠 Run Self-Learning</button>
+            <button class="desk-btn red" id="drawerKillBtn" onclick="toggleKillSwitch()">🛑 Kill Switch</button>
+          </div>
+          <label class="cfg-check" style="margin-top:8px;">
+            <input type="checkbox" id="drawerAutoLearnChk" onchange="toggleAutoLearn(this.checked)" />
+            <span>Otomatis terapkan parameter baru yang lulus Walk-Forward (Mode PAPER)</span>
+          </label>
+        </div>
+
+        <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:14px; padding:14px;">
+          <div style="font-size:12px; color:var(--text-sub); font-weight:700; margin-bottom:8px;">
+            PARAMETER AKTIF (<span id="drawerVersionTag" class="mono" style="color:var(--green);">v1.3</span>)
+          </div>
+          <div id="drawerParamsList" style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:12px;"></div>
+        </div>
+      </div>
+
+      <!-- TAB 2: POSISI, TAKE PROFIT, STOP LOSS & EKSEKUSI -->
+      <div class="settings-pane" id="tabPosExec">
+        <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:14px; padding:14px; margin-bottom:14px;">
+          <div style="font-size:12px; color:var(--green); font-weight:700; text-transform:uppercase; margin-bottom:10px;">Ukuran Posisi & Stop Loss / Trailing</div>
+          <div class="cfg-grid">
+            <div class="cfg-field">
+              <label>Alokasi per Trade (% Equity)</label>
+              <input type="number" step="0.1" id="cfg_pos_max_pct" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Maks SOL Absolut per Trade</label>
+              <input type="number" step="0.05" id="cfg_pos_max_sol" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Maks Posisi Terbuka Paralel</label>
+              <input type="number" step="1" id="cfg_pos_max_open" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Stop Loss (%)</label>
+              <input type="number" step="1" id="cfg_pos_sl_pct" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Aktivasi Trailing Stop (+%)</label>
+              <input type="number" step="1" id="cfg_pos_trail_act" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Jarak Trailing Stop (%)</label>
+              <input type="number" step="1" id="cfg_pos_trail_pct" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Time Stop (Menit)</label>
+              <input type="number" step="5" id="cfg_pos_time_stop" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Emergency Exit Liq Drop (%)</label>
+              <input type="number" step="5" id="cfg_pos_emerg_liq" class="cfg-input" />
+            </div>
+          </div>
+        </div>
+
+        <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:14px; padding:14px; margin-bottom:14px;">
+          <div style="font-size:12px; color:var(--green); font-weight:700; text-transform:uppercase; margin-bottom:10px;">Take Profit Bertahap (TP 1 / TP 2 / TP 3)</div>
+          <div class="cfg-grid">
+            <div class="cfg-field">
+              <label>TP 1 Target Profit (+%)</label>
+              <input type="number" step="5" id="cfg_tp1_pct" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>TP 1 Porsi Jual (%)</label>
+              <input type="number" step="5" id="cfg_tp1_sell" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>TP 2 Target Profit (+%)</label>
+              <input type="number" step="10" id="cfg_tp2_pct" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>TP 2 Porsi Jual (%)</label>
+              <input type="number" step="5" id="cfg_tp2_sell" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>TP 3 Target Profit (+%)</label>
+              <input type="number" step="10" id="cfg_tp3_pct" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>TP 3 Porsi Jual (%)</label>
+              <input type="number" step="5" id="cfg_tp3_sell" class="cfg-input" />
+            </div>
+          </div>
+        </div>
+
+        <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:14px; padding:14px;">
+          <div style="font-size:12px; color:var(--green); font-weight:700; text-transform:uppercase; margin-bottom:10px;">Eksekusi Swap, Slippage & Jito Anti-MEV</div>
+          <div class="cfg-grid">
+            <div class="cfg-field">
+              <label>Max Slippage (bps, 500 = 5%)</label>
+              <input type="number" step="50" id="cfg_exe_slippage" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Harga Referensi SOL/USD (Paper)</label>
+              <input type="number" step="1" id="cfg_exe_sol_usd" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Priority Fee (Lamports)</label>
+              <input type="number" step="1000" id="cfg_exe_prio_fee" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Jito Tip (Lamports)</label>
+              <input type="number" step="1000" id="cfg_exe_jito_tip" class="cfg-input" />
+            </div>
+          </div>
+          <label class="cfg-check" style="margin-top:8px;">
+            <input type="checkbox" id="cfg_exe_use_jito" />
+            <span>Gunakan Jito Bundle (Anti-MEV / Frontrun Protection di Mode LIVE)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- TAB 3: DETEKSI, SCREENING & PUMP.FUN GATE -->
+      <div class="settings-pane" id="tabScreenPump">
+        <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:14px; padding:14px; margin-bottom:14px;">
+          <div style="font-size:12px; color:var(--green); font-weight:700; text-transform:uppercase; margin-bottom:10px;">Modul 1 & 2: Deteksi & Security Screening</div>
+          <div class="cfg-grid">
+            <div class="cfg-field">
+              <label>Interval Scan (Detik)</label>
+              <input type="number" step="1" id="cfg_det_interval" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Maks Umur Token (Detik)</label>
+              <input type="number" step="600" id="cfg_det_max_age" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Min Likuiditas Deteksi ($USD)</label>
+              <input type="number" step="500" id="cfg_det_min_liq" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Min Likuiditas Screening ($USD)</label>
+              <input type="number" step="1000" id="cfg_scr_min_liq" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Maks Top 10 Holder Umum (%)</label>
+              <input type="number" step="1" id="cfg_scr_top10" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Maks Sell Tax (%)</label>
+              <input type="number" step="0.5" id="cfg_scr_sell_tax" class="cfg-input" />
+            </div>
+          </div>
+          <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:8px;">
+            <label class="cfg-check"><input type="checkbox" id="cfg_scr_lp_lock" /> <span>Wajib LP Burned/Locked</span></label>
+            <label class="cfg-check"><input type="checkbox" id="cfg_scr_rugcheck" /> <span>Aktifkan RugCheck Gate</span></label>
+            <label class="cfg-check"><input type="checkbox" id="cfg_scr_deployer" /> <span>Cek Riwayat Deployer</span></label>
+          </div>
+        </div>
+
+        <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:14px; padding:14px;">
+          <div style="font-size:12px; color:var(--amber); font-weight:700; text-transform:uppercase; margin-bottom:10px;">Gate 7: Pengaman Khusus Pump.fun (...pump)</div>
+          <label class="cfg-check" style="margin-bottom:8px;">
+            <input type="checkbox" id="cfg_pf_enabled" />
+            <span>Aktifkan Gate Khusus Token Pump.fun (Anti Dev-Bundle & Early Curve)</span>
+          </label>
+          <div class="cfg-grid">
+            <div class="cfg-field">
+              <label>Maks Top 10 Holder Pump.fun (%)</label>
+              <input type="number" step="1" id="cfg_pf_top10" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Min MCap Bonding Curve ($USD)</label>
+              <input type="number" step="1000" id="cfg_pf_mcap" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Min Umur Token Pump.fun (Detik)</label>
+              <input type="number" step="10" id="cfg_pf_min_age" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Batas Anti-Dump 5 Menit (%)</label>
+              <input type="number" step="1" id="cfg_pf_dump_pct" class="cfg-input" />
+            </div>
+          </div>
+          <label class="cfg-check" style="margin-top:8px;">
+            <input type="checkbox" id="cfg_pf_bundle" />
+            <span>Tolak otomatis jika RugCheck mendeteksi Bundled Supply / Insider Network</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- TAB 4: SCORING, RISK CONTROL & SELF-LEARNING -->
+      <div class="settings-pane" id="tabScoreRisk">
+        <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:14px; padding:14px; margin-bottom:14px;">
+          <div style="font-size:12px; color:var(--green); font-weight:700; text-transform:uppercase; margin-bottom:10px;">Modul 3: Scoring Threshold & Bobot Fitur</div>
+          <div class="cfg-grid">
+            <div class="cfg-field">
+              <label>Minimum Score Threshold (0.10–0.95)</label>
+              <input type="number" step="0.01" id="cfg_sco_threshold" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Bobot Price Momentum</label>
+              <input type="number" step="0.01" id="cfg_sco_w_mom" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Bobot Volume / Liquidity</label>
+              <input type="number" step="0.01" id="cfg_sco_w_vl" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Bobot Holder Growth</label>
+              <input type="number" step="0.01" id="cfg_sco_w_hold" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Bobot Buy / Sell Ratio</label>
+              <input type="number" step="0.01" id="cfg_sco_w_bs" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Bobot Token Age</label>
+              <input type="number" step="0.01" id="cfg_sco_w_age" class="cfg-input" />
+            </div>
+          </div>
+        </div>
+
+        <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:14px; padding:14px;">
+          <div style="font-size:12px; color:var(--red); font-weight:700; text-transform:uppercase; margin-bottom:10px;">Modul 5 & 7: Batas Risiko Keras & Self-Learning</div>
+          <div class="cfg-grid">
+            <div class="cfg-field">
+              <label>Batas Rugi Harian (SOL)</label>
+              <input type="number" step="0.1" id="cfg_rsk_daily_sol" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Max Drawdown Total (%)</label>
+              <input type="number" step="1" id="cfg_rsk_max_dd" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Circuit Breaker (Gagal Beruntun)</label>
+              <input type="number" step="1" id="cfg_rsk_cb_fails" class="cfg-input" />
+            </div>
+            <div class="cfg-field">
+              <label>Min Trade untuk Evaluasi AI</label>
+              <input type="number" step="5" id="cfg_lrn_min_trades" class="cfg-input" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 5: SERVER, RPC, WALLET & TELEGRAM (.env) -->
+      <div class="settings-pane" id="tabServerEnv">
+        <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:14px; padding:14px; margin-bottom:14px;">
+          <div style="font-size:12px; color:var(--cyan); font-weight:700; text-transform:uppercase; margin-bottom:10px;">Koneksi RPC Solana, Helius, Birdeye & Wallet (.env)</div>
+          <div class="cfg-field" style="margin-bottom:10px;">
+            <label>Solana Mainnet RPC URL</label>
+            <input type="text" id="cfg_env_rpc" class="cfg-input" placeholder="https://api.mainnet-beta.solana.com" />
+          </div>
+          <div class="cfg-grid">
+            <div class="cfg-field">
+              <label>Helius API Key <span id="badge_helius_key" class="mini-pill"></span></label>
+              <input type="password" id="cfg_env_helius_key" class="cfg-input" placeholder="Kosongkan jika tidak diubah" />
+            </div>
+            <div class="cfg-field">
+              <label>Birdeye API Key <span id="badge_birdeye_key" class="mini-pill"></span></label>
+              <input type="password" id="cfg_env_birdeye_key" class="cfg-input" placeholder="Kosongkan jika tidak diubah" />
+            </div>
+          </div>
+          <div class="cfg-field" style="margin-top:10px;">
+            <label>Wallet Private Key (Base58 — Khusus Mode LIVE) <span id="badge_wallet_key" class="mini-pill"></span></label>
+            <input type="password" id="cfg_env_wallet_key" class="cfg-input" placeholder="Disimpan terenkripsi di .env server (tidak pernah ditampilkan kembali)" />
+          </div>
+        </div>
+
+        <div style="background:var(--bg-surface); border:1px solid var(--border-subtle); border-radius:14px; padding:14px;">
+          <div style="font-size:12px; color:var(--cyan); font-weight:700; text-transform:uppercase; margin-bottom:10px;">Notifikasi Telegram Bot</div>
+          <label class="cfg-check" style="margin-bottom:8px;">
+            <input type="checkbox" id="cfg_env_tg_enabled" />
+            <span>Aktifkan Notifikasi Telegram (Buy, Sell, Risk Alert, Daily Report)</span>
+          </label>
+          <div class="cfg-grid">
+            <div class="cfg-field">
+              <label>Telegram Bot Token <span id="badge_tg_token" class="mini-pill"></span></label>
+              <input type="password" id="cfg_env_tg_token" class="cfg-input" placeholder="Kosongkan jika tidak diubah" />
+            </div>
+            <div class="cfg-field">
+              <label>Telegram Chat ID</label>
+              <input type="text" id="cfg_env_tg_chat" class="cfg-input" placeholder="Contoh: 123456789" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sticky Save All Button -->
+      <div style="margin-top:16px; padding-top:12px; border-top:1px solid var(--border-subtle); display:flex; gap:10px;">
+        <button class="desk-btn green" style="padding:12px; font-size:14px;" onclick="saveAllSettingsToServer()">
+          💾 Simpan Semua Pengaturan ke Server
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM FLOATING STATUS TOAST -->
+  <div class="bottom-pill-toast" id="bottomPillToast">
+    <span>🛡️</span>
+    <span id="bottomPillText">WTAIL stop moved to entry</span>
+  </div>
+
+  <!-- BOTTOM COMMAND BAR -->
+  <div class="bottom-bar-wrap">
+    <div class="bottom-bar">
+      <button class="circle-icon-btn" onclick="runSingleCycleNow()" title="Scan Kandidat Baru Sekarang">＋</button>
+      <div class="cmd-input-wrap">
+        <input
+          type="text"
+          id="deskCommandInput"
+          class="cmd-input"
+          placeholder="Message Trading Desk (/capital 0.5, /scan, /learn, /breakeven, /paper, /live)..."
+          onkeydown="if(event.key==='Enter') handleDeskCommand(this.value)"
+        />
+        <span style="color:var(--text-sub); cursor:pointer;" onclick="triggerLearnNow()" title="Analisa & Belajar Sekarang">✦</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let latestState = null;
+    let showPrimaryInSol = false;
+    let selectedPos = null;
+    let lastKnownTradeEventKey = null;
+    let currentChartRange = "LIVE";
+
+    function filterPointsByRange(curvePoints, range) {
+      if (!curvePoints || curvePoints.length === 0) return [];
+      const nowSec = Date.now() / 1000;
+      const windowSecMap = {
+        "LIVE": 1800,       // 30 mins live zoom
+        "1H": 3600,         // 1 hour
+        "4H": 4 * 3600,     // 4 hours
+        "1D": 24 * 3600,    // 24 hours
+        "1W": 7 * 86400,    // 7 days
+        "ALL": Infinity,
+      };
+      const fallbackCountMap = {
+        "LIVE": 8,
+        "1H": 12,
+        "4H": 20,
+        "1D": 30,
+        "1W": 40,
+        "ALL": curvePoints.length,
+      };
+      if (range === "ALL") return curvePoints;
+
+      const winSec = windowSecMap[range] || 3600;
+      const byTime = curvePoints.filter(p => p.timestamp && (nowSec - p.timestamp) <= winSec);
+      const minCount = fallbackCountMap[range] || 10;
+      if (byTime.length >= 3) {
+        return byTime.length > minCount ? byTime.slice(-minCount) : byTime;
+      }
+      return curvePoints.slice(-minCount);
+    }
+
+    function formatMcap(val) {
+      const n = Number(val || 0);
+      if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M MC`;
+      if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K MC`;
+      return `$${n.toFixed(0)} MC`;
+    }
+
+    function avatarHtml(symbol, logoUrl, sizeClass = "") {
+      const sym = (symbol || "TOK").toUpperCase();
+      const initials = sym.slice(0, 2);
+      const cls = sizeClass ? ` ${sizeClass}` : "";
+      if (logoUrl) {
+        return `<img class="tok-avatar${cls}" src="${logoUrl}" alt="${sym}" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline-flex';" /><span class="tok-fallback${cls}" style="display:none;">${initials}</span>`;
+      }
+      return `<span class="tok-fallback${cls}">${initials}</span>`;
+    }
+
+    function showBottomPill(text) {
+      const el = document.getElementById("bottomPillToast");
+      document.getElementById("bottomPillText").textContent = text;
+      el.classList.add("show");
+      setTimeout(() => el.classList.remove("show"), 3600);
+    }
+
+    function showTopEventBanner(symbol, logoUrl, titleText, subHtml) {
+      const box = document.getElementById("topEventToast");
+      document.getElementById("topEventAvatar").innerHTML = avatarHtml(symbol, logoUrl, "md");
+      document.getElementById("topEventTitle").textContent = titleText;
+      document.getElementById("topEventSub").innerHTML = subHtml;
+      box.classList.add("visible");
+      setTimeout(() => box.classList.remove("visible"), 4500);
+    }
+
+    function toggleCurrencyDisplay() {
+      showPrimaryInSol = !showPrimaryInSol;
+      if (latestState) renderDashboard(latestState);
+    }
+
+    function setChartRange(range, btn) {
+      currentChartRange = range;
+      document.querySelectorAll(".tf-btn").forEach(b => b.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+      if (latestState) {
+        renderDashboard(latestState);
+        showBottomPill(`📈 Timeframe grafik diubah ke: ${range}`);
+      }
+    }
+
+    async function quickBreakeven(event, tradeId) {
+      if (event) event.stopPropagation();
+      try {
+        const res = await apiPost("/api/positions/breakeven", { trade_id: tradeId });
+        showBottomPill(res.message);
+        await fetchDashboardState();
+      } catch (e) {
+        showBottomPill(e.message);
+      }
+    }
+
+    async function quickSellPos(event, tradeId, pct) {
+      if (event) event.stopPropagation();
+      try {
+        const res = await apiPost("/api/positions/close", { trade_id: tradeId, sell_pct: pct });
+        showBottomPill(res.message);
+        await fetchDashboardState();
+      } catch (e) {
+        showBottomPill(e.message);
+      }
+    }
+
+    async function apiPost(path, body = {}) {
+      const resp = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
+      return data;
+    }
+
+    /* Open Position Context Menu (Like 00:03-00:04 in video) */
+    function openPosContextModal(posId) {
+      if (!latestState) return;
+      const pos = (latestState.open_positions || []).find(p => p.trade_id === posId);
+      if (!pos) return;
+      selectedPos = pos;
+
+      const pct = Number(pos.pnl_pct || 0);
+      const sign = pct >= 0 ? "+" : "";
+      const stopBadge = pos.stop_at_entry
+        ? `<span class="stop-tag entry">stop at entry</span>`
+        : `<span class="stop-tag">stop ${pos.stop_loss_pct || -30}%</span>`;
+
+      document.getElementById("ctxSelectedPreview").innerHTML = `
+        <div class="pos-row" style="padding:0; border:none;">
+          <div class="pos-left">
+            ${avatarHtml(pos.symbol, pos.logo_url)}
+            <div>
+              <div class="pos-title-line">
+                <span class="pos-symbol">${pos.symbol}</span>
+                ${stopBadge}
+              </div>
+              <div class="pos-sub">$${Number(pos.entry_usd || 0).toFixed(2)} in • ${formatMcap(pos.mcap_usd)}</div>
+            </div>
+          </div>
+          <div class="pos-right">
+            <div class="pos-val">$${Number(pos.current_value_usd || 0).toFixed(2)}</div>
+            <div class="pos-pct ${pct >= 0 ? 'pos' : 'neg'}">${sign}${pct.toFixed(1)}%</div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById("ctxViewDexBtn").onclick = () => {
+        window.open(`https://dexscreener.com/solana/${pos.mint_address}`, "_blank");
+        closePosContextModal();
+      };
+      document.getElementById("ctxMoveStopBtn").onclick = async () => {
+        try {
+          const res = await apiPost("/api/positions/breakeven", { trade_id: pos.trade_id });
+          closePosContextModal();
+          showBottomPill(res.message);
+          await fetchDashboardState();
+        } catch (e) {
+          showBottomPill(e.message);
+        }
+      };
+      document.getElementById("ctxSellHalfBtn").onclick = async () => {
+        try {
+          const res = await apiPost("/api/positions/close", { trade_id: pos.trade_id, sell_pct: 50 });
+          closePosContextModal();
+          showBottomPill(res.message);
+          await fetchDashboardState();
+        } catch (e) {
+          showBottomPill(e.message);
+        }
+      };
+      document.getElementById("ctxSellFullBtn").onclick = async () => {
+        try {
+          const res = await apiPost("/api/positions/close", { trade_id: pos.trade_id, sell_pct: 100 });
+          closePosContextModal();
+          showBottomPill(res.message);
+          await fetchDashboardState();
+        } catch (e) {
+          showBottomPill(e.message);
+        }
+      };
+
+      document.getElementById("posContextModal").classList.add("open");
+    }
+
+    function closePosContextModal() {
+      document.getElementById("posContextModal").classList.remove("open");
+    }
+
+    let settingsFormInitialized = false;
+
+    function switchSettingsTab(paneId, btnEl) {
+      document.querySelectorAll(".settings-pane").forEach(p => p.classList.remove("active"));
+      document.querySelectorAll(".settings-tab-btn").forEach(b => b.classList.remove("active"));
+      const pane = document.getElementById(paneId);
+      if (pane) pane.classList.add("active");
+      if (btnEl) btnEl.classList.add("active");
+    }
+
+    function openControlDrawer() {
+      document.getElementById("liveConfirmBox").style.display = "none";
+      if (latestState && latestState.settings) {
+        populateSettingsForm(latestState.settings);
+      }
+      document.getElementById("controlDrawerModal").classList.add("open");
+    }
+
+    function closeControlDrawer() {
+      document.getElementById("controlDrawerModal").classList.remove("open");
+    }
+
+    function populateSettingsForm(s) {
+      if (!s) return;
+      const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && document.activeElement !== el && val !== undefined && val !== null) {
+          el.value = val;
+        }
+      };
+      const setChk = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.checked = Boolean(val);
+      };
+      const setBadge = (id, isSet) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.className = "mini-pill " + (isSet ? "green" : "amber");
+        el.textContent = isSet ? "✓ Terpasang" : "Belum Diisi";
+      };
+
+      if (s.capital) {
+        setVal("drawerCapitalInput", Number(s.capital.initial_capital_sol || 10).toFixed(2));
+      }
+      if (s.position) {
+        setVal("cfg_pos_max_pct", s.position.max_position_pct);
+        setVal("cfg_pos_max_sol", s.position.max_position_sol);
+        setVal("cfg_pos_max_open", s.position.max_open_positions);
+        setVal("cfg_pos_sl_pct", s.position.stop_loss_pct);
+        setVal("cfg_pos_trail_act", s.position.trail_activation_pct);
+        setVal("cfg_pos_trail_pct", s.position.trail_pct);
+        setVal("cfg_pos_time_stop", s.position.time_stop_minutes);
+        setVal("cfg_pos_emerg_liq", s.position.emergency_liq_drop_pct);
+        setVal("cfg_tp1_pct", s.position.tp1_pct);
+        setVal("cfg_tp1_sell", s.position.tp1_sell_pct);
+        setVal("cfg_tp2_pct", s.position.tp2_pct);
+        setVal("cfg_tp2_sell", s.position.tp2_sell_pct);
+        setVal("cfg_tp3_pct", s.position.tp3_pct);
+        setVal("cfg_tp3_sell", s.position.tp3_sell_pct);
+      }
+      if (s.execution) {
+        setVal("cfg_exe_slippage", s.execution.max_slippage_bps);
+        setVal("cfg_exe_sol_usd", s.execution.paper_sol_price_usd);
+        setVal("cfg_exe_prio_fee", s.execution.priority_fee_fixed_lamports);
+        setVal("cfg_exe_jito_tip", s.execution.jito_tip_lamports);
+        setChk("cfg_exe_use_jito", s.execution.use_jito_bundle);
+      }
+      if (s.detection) {
+        setVal("cfg_det_interval", s.detection.poll_interval_sec);
+        setVal("cfg_det_max_age", s.detection.max_token_age_sec);
+        setVal("cfg_det_min_liq", s.detection.min_liquidity_usd);
+      }
+      if (s.screening) {
+        setVal("cfg_scr_min_liq", s.screening.min_liquidity_usd);
+        setVal("cfg_scr_top10", s.screening.top10_holder_max_pct);
+        setVal("cfg_scr_sell_tax", s.screening.max_sell_tax_pct);
+        setChk("cfg_scr_lp_lock", s.screening.lp_must_be_burned_or_locked);
+        setChk("cfg_scr_rugcheck", s.screening.rugcheck_enabled);
+        setChk("cfg_scr_deployer", s.screening.deployer_check_enabled);
+        setChk("cfg_pf_enabled", s.screening.pumpfun_enabled);
+        setVal("cfg_pf_top10", s.screening.pumpfun_top10_max_pct);
+        setVal("cfg_pf_mcap", s.screening.pumpfun_min_curve_mcap_usd);
+        setVal("cfg_pf_min_age", s.screening.pumpfun_min_age_sec);
+        setVal("cfg_pf_dump_pct", s.screening.pumpfun_max_m5_dump_pct);
+        setChk("cfg_pf_bundle", s.screening.pumpfun_block_bundle_risks);
+      }
+      if (s.scoring) {
+        setVal("cfg_sco_threshold", s.scoring.threshold);
+        setVal("cfg_sco_w_mom", s.scoring.w_price_momentum);
+        setVal("cfg_sco_w_vl", s.scoring.w_volume_liquidity_ratio);
+        setVal("cfg_sco_w_hold", s.scoring.w_holder_growth);
+        setVal("cfg_sco_w_bs", s.scoring.w_buy_sell_ratio);
+        setVal("cfg_sco_w_age", s.scoring.w_token_age);
+      }
+      if (s.risk) {
+        setVal("cfg_rsk_daily_sol", s.risk.daily_loss_limit_sol);
+        setVal("cfg_rsk_max_dd", s.risk.max_drawdown_pct);
+        setVal("cfg_rsk_cb_fails", s.risk.consecutive_failures);
+      }
+      if (s.learning) {
+        setVal("cfg_lrn_min_trades", s.learning.min_trades_for_proposal);
+      }
+      if (s.server_env) {
+        setVal("cfg_env_rpc", s.server_env.solana_rpc_url);
+        setVal("cfg_env_tg_chat", s.server_env.telegram_chat_id);
+        setChk("cfg_env_tg_enabled", s.server_env.telegram_enabled);
+        setBadge("badge_helius_key", s.server_env.helius_api_key_set);
+        setBadge("badge_birdeye_key", s.server_env.birdeye_api_key_set);
+        setBadge("badge_wallet_key", s.server_env.wallet_private_key_set);
+        setBadge("badge_tg_token", s.server_env.telegram_bot_token_set);
+      }
+      settingsFormInitialized = true;
+    }
+
+    async function saveAllSettingsToServer() {
+      const num = id => Number(document.getElementById(id).value);
+      const chk = id => Boolean(document.getElementById(id).checked);
+      const str = id => (document.getElementById(id).value || "").trim();
+
+      const payload = {
+        capital: {
+          initial_capital_sol: num("drawerCapitalInput"),
+        },
+        position: {
+          max_position_pct: num("cfg_pos_max_pct"),
+          max_position_sol: num("cfg_pos_max_sol"),
+          max_open_positions: num("cfg_pos_max_open"),
+          stop_loss_pct: num("cfg_pos_sl_pct"),
+          trail_activation_pct: num("cfg_pos_trail_act"),
+          trail_pct: num("cfg_pos_trail_pct"),
+          time_stop_minutes: num("cfg_pos_time_stop"),
+          emergency_liq_drop_pct: num("cfg_pos_emerg_liq"),
+          tp1_pct: num("cfg_tp1_pct"),
+          tp1_sell_pct: num("cfg_tp1_sell"),
+          tp2_pct: num("cfg_tp2_pct"),
+          tp2_sell_pct: num("cfg_tp2_sell"),
+          tp3_pct: num("cfg_tp3_pct"),
+          tp3_sell_pct: num("cfg_tp3_sell"),
+        },
+        execution: {
+          max_slippage_bps: num("cfg_exe_slippage"),
+          paper_sol_price_usd: num("cfg_exe_sol_usd"),
+          priority_fee_fixed_lamports: num("cfg_exe_prio_fee"),
+          jito_tip_lamports: num("cfg_exe_jito_tip"),
+          use_jito_bundle: chk("cfg_exe_use_jito"),
+        },
+        detection: {
+          poll_interval_sec: num("cfg_det_interval"),
+          max_token_age_sec: num("cfg_det_max_age"),
+          min_liquidity_usd: num("cfg_det_min_liq"),
+        },
+        screening: {
+          min_liquidity_usd: num("cfg_scr_min_liq"),
+          top10_holder_max_pct: num("cfg_scr_top10"),
+          max_sell_tax_pct: num("cfg_scr_sell_tax"),
+          lp_must_be_burned_or_locked: chk("cfg_scr_lp_lock"),
+          rugcheck_enabled: chk("cfg_scr_rugcheck"),
+          deployer_check_enabled: chk("cfg_scr_deployer"),
+          pumpfun_enabled: chk("cfg_pf_enabled"),
+          pumpfun_top10_max_pct: num("cfg_pf_top10"),
+          pumpfun_min_curve_mcap_usd: num("cfg_pf_mcap"),
+          pumpfun_min_age_sec: num("cfg_pf_min_age"),
+          pumpfun_max_m5_dump_pct: num("cfg_pf_dump_pct"),
+          pumpfun_block_bundle_risks: chk("cfg_pf_bundle"),
+        },
+        scoring: {
+          threshold: num("cfg_sco_threshold"),
+          w_price_momentum: num("cfg_sco_w_mom"),
+          w_volume_liquidity_ratio: num("cfg_sco_w_vl"),
+          w_holder_growth: num("cfg_sco_w_hold"),
+          w_buy_sell_ratio: num("cfg_sco_w_bs"),
+          w_token_age: num("cfg_sco_w_age"),
+        },
+        risk: {
+          daily_loss_limit_sol: num("cfg_rsk_daily_sol"),
+          max_drawdown_pct: num("cfg_rsk_max_dd"),
+          consecutive_failures: num("cfg_rsk_cb_fails"),
+        },
+        learning: {
+          auto_apply_in_paper: chk("drawerAutoLearnChk"),
+          min_trades_for_proposal: num("cfg_lrn_min_trades"),
+        },
+        server_env: {
+          solana_rpc_url: str("cfg_env_rpc"),
+          helius_api_key: str("cfg_env_helius_key"),
+          birdeye_api_key: str("cfg_env_birdeye_key"),
+          wallet_private_key: str("cfg_env_wallet_key"),
+          telegram_enabled: chk("cfg_env_tg_enabled"),
+          telegram_bot_token: str("cfg_env_tg_token"),
+          telegram_chat_id: str("cfg_env_tg_chat"),
+        },
+      };
+
+      try {
+        const res = await apiPost("/api/settings", payload);
+        ["cfg_env_helius_key", "cfg_env_birdeye_key", "cfg_env_wallet_key", "cfg_env_tg_token"].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = "";
+        });
+        showBottomPill(res.message);
+        await fetchDashboardState();
+        if (res.settings) populateSettingsForm(res.settings);
+      } catch (e) {
+        showBottomPill("Gagal menyimpan: " + e.message);
+      }
+    }
+
+    function promptSwitchToLive() {
+      document.getElementById("liveConfirmBox").style.display = "block";
+    }
+
+    async function switchMode(mode, phrase = "") {
+      try {
+        const res = await apiPost("/api/mode", { mode, confirmation_phrase: phrase });
+        showBottomPill(res.message);
+        closeControlDrawer();
+        await fetchDashboardState();
+      } catch (e) {
+        showBottomPill(e.message);
+      }
+    }
+
+    async function confirmSwitchToLive() {
+      const phrase = document.getElementById("drawerLivePhrase").value.trim();
+      await switchMode("LIVE", phrase);
+    }
+
+    async function toggleBotEngine() {
+      try {
+        const res = await apiPost("/api/bot/toggle");
+        showBottomPill(res.message);
+        await fetchDashboardState();
+      } catch (e) {
+        showBottomPill(e.message);
+      }
+    }
+
+    async function runSingleCycleNow() {
+      try {
+        showBottomPill("⚡ Scanning new Solana pools...");
+        const res = await apiPost("/api/bot/scan-once");
+        showBottomPill(res.message);
+        await fetchDashboardState();
+      } catch (e) {
+        showBottomPill(e.message);
+      }
+    }
+
+    async function triggerLearnNow() {
+      try {
+        showBottomPill("🧠 Running Walk-Forward self-learning...");
+        const res = await apiPost("/api/learning/run-now");
+        showBottomPill(res.message);
+        await fetchDashboardState();
+      } catch (e) {
+        showBottomPill(e.message);
+      }
+    }
+
+    async function toggleAutoLearn(enabled) {
+      try {
+        const res = await apiPost("/api/learning/toggle-auto", { enabled });
+        showBottomPill(res.message);
+        await fetchDashboardState();
+      } catch (e) {
+        showBottomPill(e.message);
+      }
+    }
+
+    async function toggleKillSwitch() {
+      try {
+        const active = latestState && latestState.risk && latestState.risk.kill_switch_active;
+        const res = await apiPost("/api/kill-switch", { action: active ? "deactivate" : "activate" });
+        showBottomPill(res.message);
+        await fetchDashboardState();
+      } catch (e) {
+        showBottomPill(e.message);
+      }
+    }
+
+    async function setQuickCapital(capSol) {
+      document.getElementById("drawerCapitalInput").value = capSol;
+      await applyCustomCapital(capSol);
+    }
+
+    async function applyCustomCapital(explicitVal) {
+      const val = explicitVal !== undefined
+        ? Number(explicitVal)
+        : Number(document.getElementById("drawerCapitalInput").value);
+      if (!val || val <= 0) {
+        showBottomPill("Masukkan jumlah modal SOL yang valid (contoh: 0.5)");
+        return;
+      }
+      try {
+        const res = await apiPost("/api/capital", { capital_sol: val });
+        showBottomPill(res.message);
+        await fetchDashboardState();
+      } catch (e) {
+        showBottomPill(e.message);
+      }
+    }
+
+    async function handleDeskCommand(rawCmd) {
+      const cmd = (rawCmd || "").trim().toLowerCase();
+      document.getElementById("deskCommandInput").value = "";
+      if (!cmd) return;
+      const capMatch = cmd.match(/(?:capital|modal|sol)\s*([0-9]+(?:\.[0-9]+)?)|^([0-9]+(?:\.[0-9]+)?)\s*sol$/i);
+      if (capMatch) {
+        const capVal = parseFloat(capMatch[1] || capMatch[2]);
+        if (capVal > 0) {
+          await applyCustomCapital(capVal);
+          return;
+        }
+      }
+      if (cmd.includes("scan")) await runSingleCycleNow();
+      else if (cmd.includes("learn")) await triggerLearnNow();
+      else if (cmd.includes("paper")) await switchMode("PAPER");
+      else if (cmd.includes("live")) {
+        openControlDrawer();
+        promptSwitchToLive();
+      } else if (cmd.includes("breakeven") && latestState && latestState.open_positions.length > 0) {
+        const firstId = latestState.open_positions[0].trade_id;
+        const res = await apiPost("/api/positions/breakeven", { trade_id: firstId });
+        showBottomPill(res.message);
+        await fetchDashboardState();
+      } else if (cmd.includes("kill")) await toggleKillSwitch();
+      else showBottomPill(`Command executed: ${rawCmd}`);
+    }
+
+    function drawEquityChartWithCallouts(curvePoints) {
+      const canvas = document.getElementById("equityCanvas");
+      const calloutLayer = document.getElementById("chartCalloutsLayer");
+      if (!canvas || !calloutLayer) return;
+
+      const ctx = canvas.getContext("2d");
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      const W = rect.width;
+      const H = rect.height;
+      ctx.clearRect(0, 0, W, H);
+      calloutLayer.innerHTML = "";
+
+      if (!curvePoints || curvePoints.length === 0) return;
+
+      // Filter points according to active timeframe button (LIVE, 1H, 4H, 1D, 1W, ALL)
+      const pts = filterPointsByRange(curvePoints, currentChartRange);
+      const vals = pts.map(p => Number(p.equity_usd || p.equity_sol * 150));
+      const minV = Math.min(...vals);
+      const maxV = Math.max(...vals);
+      const span = Math.max(5, maxV - minV);
+      const yMin = minV - span * 0.22;
+      const yMax = maxV + span * 0.32;
+
+      const padX = 16;
+      const padTop = 36;
+      const padBot = 18;
+      const plotW = W - padX * 2;
+      const plotH = H - padTop - padBot;
+
+      const getX = (i) => pts.length === 1 ? W / 2 : padX + (i / (pts.length - 1)) * plotW;
+      const getY = (v) => padTop + ((yMax - v) / (yMax - yMin || 1)) * plotH;
+
+      // Subtle vertical dashed grid lines (like video)
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.06)";
+      ctx.setLineDash([3, 5]);
+      ctx.lineWidth = 1;
+      for (let g = 1; g <= 5; g++) {
+        const gx = (W / 6) * g;
+        ctx.beginPath();
+        ctx.moveTo(gx, 8);
+        ctx.lineTo(gx, H - 8);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
+      // Smooth Area Gradient under Curve
+      const grad = ctx.createLinearGradient(0, padTop, 0, H);
+      grad.addColorStop(0, "rgba(25, 251, 155, 0.26)");
+      grad.addColorStop(1, "rgba(25, 251, 155, 0.0)");
+
+      ctx.beginPath();
+      pts.forEach((pt, i) => {
+        const x = getX(i);
+        const y = getY(vals[i]);
+        if (i === 0) ctx.moveTo(x, y);
+        else {
+          const prevX = getX(i - 1);
+          const prevY = getY(vals[i - 1]);
+          const cpX = (prevX + x) / 2;
+          ctx.bezierCurveTo(cpX, prevY, cpX, y, x, y);
+        }
+      });
+      ctx.lineTo(getX(pts.length - 1), H);
+      ctx.lineTo(getX(0), H);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Main Glowing Green Curve
+      ctx.beginPath();
+      pts.forEach((pt, i) => {
+        const x = getX(i);
+        const y = getY(vals[i]);
+        if (i === 0) ctx.moveTo(x, y);
+        else {
+          const prevX = getX(i - 1);
+          const prevY = getY(vals[i - 1]);
+          const cpX = (prevX + x) / 2;
+          ctx.bezierCurveTo(cpX, prevY, cpX, y, x, y);
+        }
+      });
+      ctx.strokeStyle = "#19fb9b";
+      ctx.lineWidth = 3;
+      ctx.shadowColor = "rgba(25, 251, 155, 0.6)";
+      ctx.shadowBlur = 12;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Glowing live tip dot
+      const lastX = getX(pts.length - 1);
+      const lastY = getY(vals[pts.length - 1]);
+      ctx.beginPath();
+      ctx.arc(lastX, lastY, 5, 0, Math.PI * 2);
+      ctx.fillStyle = "#19fb9b";
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#ffffff";
+      ctx.stroke();
+
+      // Pick up to 3 well-spaced points to render Floating Avatar Callout Pills
+      const calloutIndices = [];
+      if (pts.length >= 2) calloutIndices.push(pts.length - 1);
+      if (pts.length >= 5) calloutIndices.push(pts.length - 4);
+      if (pts.length >= 9) calloutIndices.push(pts.length - 8);
+
+      calloutIndices.forEach((idx, rank) => {
+        const pt = pts[idx];
+        if (!pt || !pt.symbol) return;
+        const x = Math.max(68, Math.min(W - 72, getX(idx)));
+        const y = Math.max(36, Math.min(H - 25, getY(vals[idx]) - (rank % 2 === 1 ? 14 : 0)));
+
+        let pillClass = "buy";
+        let labelHtml = `Bought ${pt.symbol}`;
+        if (pt.action === "win") {
+          pillClass = "win";
+          labelHtml = `+$${Math.abs(Number(pt.pnl_usd || 0)).toFixed(2)}`;
+        } else if (pt.action === "stop") {
+          pillClass = "stop";
+          labelHtml = `${Number(pt.pnl_pct || -6).toFixed(0)}%`;
+        }
+
+        const pill = document.createElement("div");
+        pill.className = `chart-pill ${pillClass}`;
+        pill.style.left = `${x}px`;
+        pill.style.top = `${y}px`;
+        pill.innerHTML = `${avatarHtml(pt.symbol, pt.logo_url, "sm")} <span>${labelHtml}</span>`;
+        calloutLayer.appendChild(pill);
+      });
+    }
+
+    function renderDashboard(st) {
+      const prevState = latestState;
+      latestState = st;
+
+      const solUsd = Number(st.sol_price_usd || 150);
+      const eq = st.equity;
+      const isLive = st.mode === "LIVE";
+
+      // Header Live/Paper Indicator
+      const dot = document.getElementById("headerPulseDot");
+      const modeLbl = document.getElementById("headerModeLabel");
+      if (st.risk.kill_switch_active) {
+        dot.className = "pulse-dot halted";
+        modeLbl.textContent = "Halted";
+      } else if (isLive) {
+        dot.className = "pulse-dot";
+        modeLbl.textContent = "Live";
+      } else {
+        dot.className = "pulse-dot paper";
+        modeLbl.textContent = "Paper Live";
+      }
+
+      // Hero Portfolio Value
+      const nextEntrySol = Number(eq.next_entry_sol || (eq.live_equity_sol * 0.02));
+      const posPct = Number(eq.max_position_pct || 2.0);
+      document.getElementById("heroConnText").textContent =
+        `connected • ${st.open_positions.length} open • Equity: ${eq.live_equity_sol.toFixed(4)} SOL • Size Entry (${posPct.toFixed(0)}%): ${nextEntrySol.toFixed(4)} SOL`;
+
+      const heroEl = document.getElementById("heroUsdAmount");
+      if (showPrimaryInSol) {
+        heroEl.textContent = `${eq.live_equity_sol.toFixed(4)} SOL`;
+        document.getElementById("heroSolSub").textContent = `$${eq.live_equity_usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      } else {
+        heroEl.textContent = `$${eq.live_equity_usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        document.getElementById("heroSolSub").textContent = `${eq.live_equity_sol.toFixed(4)} SOL`;
+      }
+
+      const filteredPts = filterPointsByRange(st.equity_curve, currentChartRange);
+      const startEqSol = (filteredPts.length > 0 && currentChartRange !== "ALL")
+        ? Number(filteredPts[0].equity_sol || eq.initial_capital_sol)
+        : eq.initial_capital_sol;
+      const rangePnlSol = eq.live_equity_sol - startEqSol;
+      const pnlUsd = rangePnlSol * solUsd;
+      const rangeRoiPct = startEqSol > 0 ? (rangePnlSol / startEqSol) * 100.0 : 0.0;
+      const isPos = rangePnlSol >= 0;
+      const mult = startEqSol > 0 ? eq.live_equity_sol / startEqSol : 1.0;
+
+      const gainEl = document.getElementById("heroGainText");
+      gainEl.className = "hero-gain-text" + (isPos ? "" : " neg");
+      gainEl.textContent = `${isPos ? "▲" : "▼"} $${Math.abs(pnlUsd).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${isPos ? "+" : ""}${rangeRoiPct.toFixed(2)}%) • ${currentChartRange}`;
+
+      const multEl = document.getElementById("heroMultBadge");
+      multEl.className = "mult-badge" + (isPos ? "" : " neg");
+      multEl.textContent = `${mult.toFixed(2)}x`;
+
+      // Draw Chart + Floating Callouts
+      drawEquityChartWithCallouts(st.equity_curve);
+
+      // Update 4 Bot Cards
+      // 1. Analyst Card
+      const sc = st.latest_scored || { symbol: "SCAN", score_pct: 72, threshold_pct: 72, logo_url: "" };
+      const circumference = 150.8;
+      const offset = circumference - (Math.min(100, Math.max(5, sc.score_pct)) / 100) * circumference;
+      const arc = document.getElementById("analystGaugeArc");
+      arc.style.strokeDashoffset = `${offset}`;
+      arc.setAttribute("stroke", sc.score_pct >= sc.threshold_pct ? "#19fb9b" : "#f59e0b");
+      document.getElementById("analystScoreNum").textContent = sc.score_pct;
+      document.getElementById("analystTokenAvatar").innerHTML = avatarHtml(sc.symbol, sc.logo_url, "sm");
+      document.getElementById("analystTokenSym").textContent = sc.symbol;
+      document.getElementById("analystTokenSub").textContent = sc.passed ? "passed gate ✓" : "scoring...";
+      document.getElementById("analystThresholdPill").textContent = `min score ${sc.threshold_pct}`;
+      document.getElementById("analystVersionPill").textContent = st.learning.active_version || "v1.3";
+
+      // 2. Sniper Card
+      const totalTrades = st.performance.trades_count + st.open_positions.length;
+      document.getElementById("sniperTradesCount").textContent = `• ${totalTrades} trades`;
+      const latestBuy = st.open_positions[st.open_positions.length - 1] || st.closed_trades[0];
+      if (latestBuy) {
+        const buyUsd = Number(latestBuy.entry_usd || (latestBuy.entry_amount_sol || 0.22) * solUsd);
+        document.getElementById("sniperAvatarBox").innerHTML = avatarHtml(latestBuy.symbol, latestBuy.logo_url, "md");
+        document.getElementById("sniperTokenSym").textContent = latestBuy.symbol || "TOKEN";
+        document.getElementById("sniperTokenSub").textContent = `$${buyUsd.toFixed(2)} • on ${latestBuy.dex || "Raydium"}`;
+      }
+
+      // 3. Risk Card
+      const lastLoss = (st.closed_trades || []).find(t => Number(t.pnl_sol || 0) < 0);
+      if (lastLoss) {
+        const lossUsd = Math.abs(Number(lastLoss.pnl_sol || 0) * solUsd);
+        document.getElementById("riskAvatarBox").innerHTML = avatarHtml(lastLoss.symbol, lastLoss.logo_url, "md");
+        document.getElementById("riskTitleText").textContent = "Stopped out";
+        document.getElementById("riskSubText").innerHTML = `${lastLoss.symbol} <span style="color:var(--red);">-$${lossUsd.toFixed(2)}</span>`;
+      } else if (st.open_positions.length > 0) {
+        const watchPos = st.open_positions[0];
+        document.getElementById("riskAvatarBox").innerHTML = avatarHtml(watchPos.symbol, watchPos.logo_url, "md");
+        document.getElementById("riskTitleText").textContent = "Watching";
+        document.getElementById("riskSubText").textContent = `${watchPos.symbol} position`;
+      }
+      document.getElementById("riskStopPill").textContent = `stop ${st.risk.stop_loss_pct || -30}%`;
+      document.getElementById("riskTrailPill").textContent = `trail ${st.risk.trail_pct || 15}%`;
+
+      // 4. Banker Card
+      const netWinUsd = Math.max(0, st.performance.net_pnl_sol * solUsd);
+      document.getElementById("bankerLockedText").textContent = `• $${netWinUsd.toFixed(0)} locked`;
+      const lastWin = (st.closed_trades || []).find(t => Number(t.pnl_sol || 0) > 0);
+      if (lastWin) {
+        const winUsd = Number(lastWin.pnl_sol || 0) * solUsd;
+        document.getElementById("bankerAvatarBox").innerHTML = avatarHtml(lastWin.symbol, lastWin.logo_url, "md");
+        document.getElementById("bankerLastWinSub").textContent = `${lastWin.symbol} +$${winUsd.toFixed(2)}`;
+      }
+      document.getElementById("bankerNetProfitPill").textContent = `+$${netWinUsd.toFixed(0)}`;
+      document.getElementById("bankerWinsPill").textContent = `${st.performance.wins} wins`;
+
+      // Open Positions List (Full Detailed Breakdown: Entry Price, Live Price, SOL/USD/% PnL, TP Stage & Quick Actions)
+      document.getElementById("openPositionsRatio").textContent =
+        `${st.open_positions.length} of ${st.risk.max_open_positions}`;
+      const openBox = document.getElementById("openPositionsContainer");
+      if (st.open_positions.length === 0) {
+        openBox.innerHTML = `
+          <div style="padding:20px 8px; text-align:center; color:var(--text-sub); font-size:13px;">
+            Belum ada posisi terbuka saat ini. Sniper sedang memindai pool Solana baru...
+          </div>
+        `;
+      } else {
+        openBox.innerHTML = st.open_positions.map(pos => {
+          const pnlSol = Number(pos.pnl_sol || 0);
+          const pnlUsdVal = Number(pos.pnl_usd !== undefined ? pos.pnl_usd : pnlSol * solUsd);
+          const pct = Number(pos.pnl_pct || 0);
+          const isProfit = pnlSol >= 0;
+          const sign = isProfit ? "+" : "";
+          const pnlColor = isProfit ? "var(--green)" : "var(--red)";
+          const shortMint = pos.mint_address ? pos.mint_address.slice(0, 6) + "..." + pos.mint_address.slice(-4) : "";
+          const entryTimeStr = (pos.entry_at || "").replace("T", " ").slice(11, 19) || "-";
+          const stopBadge = pos.stop_at_entry
+            ? `<span class="stop-tag entry">🛡️ stop at entry (0%)</span>`
+            : `<span class="stop-tag">stop ${pos.stop_loss_pct || -30}%</span>`;
+
+          return `
+            <div style="padding:18px 10px; border-bottom:1px solid var(--border-subtle);" onclick="openPosContextModal(${pos.trade_id})">
+              <!-- Row 1: Avatar, Symbol, Badges & Total Value / PnL (Cleanly separated, no overlap) -->
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; cursor:pointer;">
+                <div class="pos-left">
+                  ${avatarHtml(pos.symbol, pos.logo_url)}
+                  <div class="pos-left-info">
+                    <div class="pos-title-line">
+                      <span class="pos-symbol">#${pos.trade_id} ${pos.symbol}</span>
+                      <a href="https://dexscreener.com/solana/${pos.mint_address}" target="_blank" onclick="event.stopPropagation()" class="mono" style="font-size:11.5px; color:var(--cyan); text-decoration:none;">${shortMint} ↗</a>
+                      ${stopBadge}
+                      <span class="mini-pill" style="padding:2px 8px; font-size:10.5px;">TP: ${pos.tp_hits || 0}/3</span>
+                    </div>
+                    <div class="pos-sub">
+                      <span>Modal: <b style="color:var(--text-main);">${Number(pos.remaining_sol || 0).toFixed(4)} SOL</b> ($${Number(pos.entry_usd || 0).toFixed(2)})</span>
+                      <span>•</span>
+                      <span>${formatMcap(pos.mcap_usd)}</span>
+                      <span>•</span>
+                      <span>Jam Beli: <span class="mono" style="color:var(--text-main);">${entryTimeStr}</span></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="pos-right">
+                  <div class="pos-val">$${Number(pos.current_value_usd || 0).toFixed(2)}</div>
+                  <div class="pos-pct ${isProfit ? 'pos' : 'neg'}">
+                    ${sign}${pnlSol.toFixed(4)} SOL (${sign}${pct.toFixed(2)}%)
+                  </div>
+                </div>
+              </div>
+
+              <!-- Row 2: Spacious 4-Column Stat Grid (Beli, Sekarang, Selisih USD, Realtime PnL) -->
+              <div class="pos-metrics-grid mono">
+                <div class="pos-metric-item">
+                  <span class="pos-metric-lbl">Harga Beli (Entry)</span>
+                  <span class="pos-metric-val">$${Number(pos.entry_price_usd || 0).toFixed(8)}</span>
+                </div>
+                <div class="pos-metric-item">
+                  <span class="pos-metric-lbl">Harga Sekarang</span>
+                  <span class="pos-metric-val" style="color:${pnlColor};">$${Number(pos.current_price_usd || 0).toFixed(8)}</span>
+                </div>
+                <div class="pos-metric-item">
+                  <span class="pos-metric-lbl">Profit / Loss ($USD)</span>
+                  <span class="pos-metric-val" style="color:${pnlColor};">${sign}$${Math.abs(pnlUsdVal).toFixed(2)} (${sign}${pct.toFixed(2)}%)</span>
+                </div>
+                <div class="pos-metric-item">
+                  <span class="pos-metric-lbl">Profit / Loss (SOL)</span>
+                  <span class="pos-metric-val" style="color:${pnlColor};">${sign}${pnlSol.toFixed(4)} SOL</span>
+                </div>
+              </div>
+
+              <!-- Row 3: Direct Action Buttons with comfortable spacing -->
+              <div class="pos-actions-bar">
+                <button class="pos-action-btn" style="border:1px solid var(--border-bright); background:var(--bg-card-elevated); color:#fff;" onclick="quickBreakeven(event, ${pos.trade_id})">
+                  🛡️ Stop ke Entry
+                </button>
+                <button class="pos-action-btn" style="border:1px solid rgba(245,158,11,0.35); background:var(--amber-soft); color:var(--amber);" onclick="quickSellPos(event, ${pos.trade_id}, 50)">
+                  ⚡ Jual 50%
+                </button>
+                <button class="pos-action-btn" style="border:1px solid var(--red-border); background:var(--red-soft); color:var(--red); margin-left:auto;" onclick="quickSellPos(event, ${pos.trade_id}, 100)">
+                  🛑 Jual 100%
+                </button>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      // Activity Feed (Combine active buys + recent closed trades)
+      const actBox = document.getElementById("activityFeedContainer");
+      const feedItems = [];
+
+      st.open_positions.forEach(p => {
+        feedItems.push({
+          type: "buy",
+          symbol: p.symbol,
+          logo_url: p.logo_url,
+          title: `Bought ${p.symbol}`,
+          sub: `Sniper • active position`,
+          rightTop: `$${Number(p.entry_usd || 0).toFixed(2)}`,
+          rightBot: `at ${formatMcap(p.mcap_usd)}`,
+          rightClass: "",
+        });
+      });
+
+      st.closed_trades.slice(0, 12).forEach(t => {
+        const pnlSol = Number(t.pnl_sol || 0);
+        const pnlUsdVal = pnlSol * solUsd;
+        const pct = Number(t.pnl_pct || 0);
+        const isWin = pnlSol >= 0;
+        const timeStr = (t.exit_at || t.created_at || "").slice(11, 16) || "just now";
+        feedItems.push({
+          type: isWin ? "win" : "stop",
+          symbol: t.symbol,
+          logo_url: t.logo_url,
+          title: isWin ? `Sold ${t.symbol}` : `Stopped ${t.symbol}`,
+          sub: isWin ? `Banker • take profit • ${timeStr}` : `Risk • ${t.exit_reason || 'stop loss'} • ${timeStr}`,
+          rightTop: `${isWin ? "+" : "-"}$${Math.abs(pnlUsdVal).toFixed(2)}`,
+          rightBot: `${isWin ? "+" : ""}${pct.toFixed(1)}%`,
+          rightClass: isWin ? "pos" : "neg",
+        });
+      });
+
+      if (feedItems.length === 0) {
+        actBox.innerHTML = `<div style="padding:18px; text-align:center; color:var(--text-sub);">No recent trade activity.</div>`;
+      } else {
+        actBox.innerHTML = feedItems.slice(0, 10).map(item => `
+          <div class="pos-row" style="cursor:default;">
+            <div class="pos-left">
+              ${avatarHtml(item.symbol, item.logo_url)}
+              <div>
+                <div class="pos-symbol">${item.title}</div>
+                <div class="pos-sub">${item.sub}</div>
+              </div>
+            </div>
+            <div class="pos-right">
+              <div class="pos-val ${item.rightClass === 'pos' ? 'pos-pct pos' : item.rightClass === 'neg' ? 'pos-pct neg' : ''}" style="font-size:15px;">${item.rightTop}</div>
+              <div class="pos-sub ${item.rightClass === 'pos' ? 'pos-pct pos' : item.rightClass === 'neg' ? 'pos-pct neg' : ''}">${item.rightBot}</div>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      // Top Event Notification Toast when a new buy or close occurs
+      const newestKey = `${st.open_positions.length}_${st.closed_trades.length}`;
+      if (prevState && lastKnownTradeEventKey && newestKey !== lastKnownTradeEventKey) {
+        if (st.open_positions.length > prevState.open_positions.length) {
+          const nb = st.open_positions[st.open_positions.length - 1];
+          showTopEventBanner(
+            nb.symbol,
+            nb.logo_url,
+            `Bought $${Number(nb.entry_usd || 0).toFixed(2)} ${nb.symbol}`,
+            `at ${formatMcap(nb.mcap_usd)} • Filled by Sniper`
+          );
+        } else if (st.closed_trades.length > prevState.closed_trades.length) {
+          const nc = st.closed_trades[0];
+          const pUsd = Number(nc.pnl_sol || 0) * solUsd;
+          const sign = pUsd >= 0 ? "+" : "-";
+          const color = pUsd >= 0 ? "var(--green)" : "var(--red)";
+          showTopEventBanner(
+            nc.symbol,
+            nc.logo_url,
+            `Sold ${nc.symbol}`,
+            `at ${formatMcap(nc.mcap_usd)} • <span style="color:${color};">${sign}$${Math.abs(pUsd).toFixed(2)} (${Number(nc.pnl_pct || 0).toFixed(1)}%)</span>`
+          );
+        }
+      }
+      lastKnownTradeEventKey = newestKey;
+
+      // Sync Drawer Controls
+      if (!settingsFormInitialized && st.settings) {
+        populateSettingsForm(st.settings);
+      }
+      const capInput = document.getElementById("drawerCapitalInput");
+      if (capInput && document.activeElement !== capInput) {
+        capInput.value = Number(eq.initial_capital_sol || 10).toFixed(2);
+      }
+      const nextBadge = document.getElementById("drawerNextEntryBadge");
+      if (nextBadge) {
+        nextBadge.textContent = `Next Entry: ${nextEntrySol.toFixed(4)} SOL (${posPct.toFixed(1)}%)`;
+      }
+      const pctTxt = document.getElementById("drawerPosPctText");
+      if (pctTxt) {
+        pctTxt.textContent = posPct.toFixed(1);
+      }
+      document.getElementById("drawerToggleScanBtn").textContent =
+        st.bot.is_running ? "⏸ Pause Auto-Scan" : "▶ Start Auto-Scan";
+      document.getElementById("drawerAutoLearnChk").checked = Boolean(st.learning.auto_apply_in_paper);
+      document.getElementById("drawerVersionTag").textContent = st.learning.active_version || "v1.3";
+      document.getElementById("drawerParamsList").innerHTML = Object.entries(st.learning.tunable_params || {}).map(
+        ([k, v]) => `
+          <div style="background:#05070b; padding:7px 10px; border-radius:8px; display:flex; justify-content:space-between;">
+            <span style="color:var(--text-sub);">${k.replace("scoring.weights.", "w.").replace("position.", "")}</span>
+            <span class="mono" style="color:var(--green); font-weight:700;">${Number(v).toFixed(3)}</span>
+          </div>
+        `
+      ).join("");
+    }
+
+    async function fetchDashboardState() {
+      try {
+        const resp = await fetch("/api/state");
+        if (!resp.ok) return;
+        const data = await resp.json();
+        renderDashboard(data);
+      } catch (e) {
+        console.error("State poll error:", e);
+      }
+    }
+
+    window.addEventListener("resize", () => {
+      if (latestState) drawEquityChartWithCallouts(latestState.equity_curve);
+    });
+
+    fetchDashboardState();
+    setInterval(fetchDashboardState, 2000);
+  </script>
+</body>
+</html>
