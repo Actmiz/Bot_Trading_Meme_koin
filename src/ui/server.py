@@ -23,7 +23,7 @@ import yaml
 
 from src.bot import LIVE_CONFIRMATION_PHRASE, MemeTradingBot
 from src.core.config import BotConfig, TakeProfitLevel, load_config
-from src.core.enums import BotMode, ExitReason
+from src.core.enums import BotMode, ExitReason, RiskEventType
 from src.learning.backtester import compute_performance_metrics
 from src.position.exit_rules import ExitSignal
 
@@ -71,13 +71,15 @@ class BotUIController:
         while self.is_running:
             try:
                 risk_ok = await self.bot.risk_controller.check_can_trade()
-                if not risk_ok.allowed:
+                if not risk_ok.allowed and risk_ok.event_type != RiskEventType.MAX_POSITIONS:
                     logger.warning("Auto-scan paused by risk controller: %s", risk_ok.reason)
                     self.is_running = False
                     break
 
                 self.cycle_count += 1
-                discovered = await self.bot.detector.poll_new_tokens()
+                discovered = []
+                if self.bot.position_manager.open_count < self.bot.config.position.max_open_positions and risk_ok.allowed:
+                    discovered = await self.bot.detector.poll_new_tokens()
                 await self.bot.refresh_open_positions()
                 print(
                     self.bot.format_live_dashboard(

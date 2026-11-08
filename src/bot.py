@@ -9,7 +9,7 @@ from typing import Any
 
 from src.core.config import BotConfig, load_config
 from src.core.database import Database
-from src.core.enums import BotMode
+from src.core.enums import BotMode, RiskEventType
 from src.core.exceptions import LiveModeError
 from src.core.models import TokenSnapshot, TradeRecord
 from src.detection.detector import TokenDetector
@@ -608,13 +608,17 @@ async def _main_async() -> None:
             await bot.notifier.poll_commands(
                 on_kill_command=lambda r: bot.risk_controller.trigger_telegram_kill(r),
             )
+            # Check critical risk boundaries (daily loss, drawdown, circuit breaker, kill switch)
+            # Note: Max open positions should NOT kill the main loop; the bot must keep monitoring & managing existing open positions!
             risk_ok = await bot.risk_controller.check_can_trade()
-            if not risk_ok.allowed:
+            if not risk_ok.allowed and risk_ok.event_type != RiskEventType.MAX_POSITIONS:
                 logger.warning("Stopping main loop: %s", risk_ok.reason)
                 break
 
-            # 1. Detect & process new candidate tokens (Modul 1 -> 2 -> 3)
-            discovered = await bot.detector.poll_new_tokens()
+            # 1. Detect & process new candidate tokens only if we have free position slots
+            discovered = []
+            if bot.position_manager.open_count < bot.config.position.max_open_positions and risk_ok.allowed:
+                discovered = await bot.detector.poll_new_tokens()
 
             # 2. Refresh prices & manage open positions (Modul 4 -> 5)
             await bot.refresh_open_positions()
