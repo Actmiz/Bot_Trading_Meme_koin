@@ -622,6 +622,10 @@ class BotUIController:
                 except Exception as e:
                     logger.warning("Could not write .env file: %s", e)
 
+            # Hot-reload notifier immediately in memory!
+            if hasattr(self.bot, "notifier"):
+                self.bot.notifier.reload_config(cfg)
+
         # 10. Persist full structure back to config.yaml
         if self.config_path.exists():
             try:

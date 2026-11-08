@@ -36,6 +36,15 @@ class TelegramNotifier:
         # Sent message log (for testing/inspection when disabled or mocked)
         self.sent_messages: list[tuple[str, str]] = []
 
+    def reload_config(self, config: BotConfig) -> None:
+        """Dynamically reload telegram credentials and activation flag without restart."""
+        self.config = config
+        self._token = config.secrets.telegram_bot_token
+        self._chat_id = config.secrets.telegram_chat_id
+        self._enabled = config.telegram.enabled and bool(self._token and self._chat_id)
+        self._notify_on = set(config.telegram.notify_on)
+        logger.info("TelegramNotifier reloaded: enabled=%s, chat_id=%s", self._enabled, self._chat_id)
+
     @property
     def is_enabled(self) -> bool:
         return self._enabled
