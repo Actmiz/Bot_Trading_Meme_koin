@@ -75,15 +75,17 @@ class TelegramNotifier:
         payload = {
             "chat_id": self._chat_id,
             "text": text,
+            "parse_mode": "HTML",
         }
         try:
             resp = await self._client.post(url, json=payload)
             if resp.status_code == 200:
+                logger.info("Telegram notification sent successfully to %s", self._chat_id)
                 return True
-            logger.warning("Telegram sendMessage returned HTTP %d", resp.status_code)
+            logger.warning("Telegram sendMessage returned HTTP %d: %s", resp.status_code, resp.text)
             return False
         except Exception as e:
-            logger.error("Failed to send Telegram notification: %s", type(e).__name__)
+            logger.error("Failed to send Telegram notification: %s", e)
             return False
 
     async def poll_commands(

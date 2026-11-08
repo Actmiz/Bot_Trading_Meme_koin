@@ -605,9 +605,12 @@ async def _main_async() -> None:
             if ui_controller is not None:
                 ui_controller.cycle_count = count
 
+            async def _get_status_text() -> str:
+                return f"<pre>{bot.format_live_dashboard(cycle_num=count)}</pre>"
+
             await bot.notifier.poll_commands(
                 on_kill_command=lambda r: bot.risk_controller.trigger_telegram_kill(r),
-                on_status_command=lambda: asyncio.sleep(0, result=bot.format_live_dashboard(cycle_num=count)),
+                on_status_command=_get_status_text,
             )
             # Check critical risk boundaries (daily loss, drawdown, circuit breaker, kill switch)
             # Note: Max open positions should NOT kill the main loop; the bot must keep monitoring & managing existing open positions!
