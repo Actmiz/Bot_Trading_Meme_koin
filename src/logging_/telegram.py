@@ -53,7 +53,26 @@ class TelegramNotifier:
         """Check whether notifications are enabled for the given category."""
         return event_category in self._notify_on
 
-    async def close(self) -> None:
+    async def send_direct_reply(self, text: str) -> bool:
+        """Send a direct response to the operator regardless of category filter."""
+        if not self._token or not self._chat_id:
+            return False
+        url = f"https://api.telegram.org/bot{self._token}/sendMessage"
+        payload = {
+            "chat_id": self._chat_id,
+            "text": text,
+            "parse_mode": "HTML",
+        }
+        try:
+            resp = await self._client.post(url, json=payload)
+            if resp.status_code == 200:
+                logger.info("Telegram command reply sent successfully to %s", self._chat_id)
+                return True
+            logger.warning("Telegram send_direct_reply failed: HTTP %d %s", resp.status_code, resp.text)
+            return False
+        except Exception as e:
+            logger.error("Telegram send_direct_reply error: %s", e)
+            return False
         if not self._external_client:
             await self._client.aclose()
 
@@ -133,6 +152,7 @@ class TelegramNotifier:
                 continue
 
             text = (msg.get("text") or "").strip()
+            logger.info("Received Telegram command: '%s' from chat_id=%s", text, chat_id)
             if text.startswith("/start") or text.startswith("/help"):
                 processed.append(text.split()[0])
                 welcome = (
@@ -141,18 +161,18 @@ class TelegramNotifier:
                     "• <code>/status</code> - Cek Live Equity, PnL, & Posisi Terbuka\n"
                     "• <code>/kill</code> - Emergency Kill Switch (Tutup semua posisi & stop bot)\n"
                 )
-                await self.send_message("daily_report", welcome)
+                await self.send_direct_reply(welcome)
             elif text.startswith("/kill"):
                 reason = text[len("/kill"):].strip() or "Operator sent /kill via Telegram"
                 processed.append("/kill")
                 if on_kill_command is not None:
                     await on_kill_command(reason)
-                await self.send_message("risk_limit", f"🛑 Kill switch activated: {reason}")
+                await self.send_direct_reply(f"🛑 Kill switch activated: {reason}")
             elif text.startswith("/status"):
                 processed.append("/status")
                 if on_status_command is not None:
                     status_text = await on_status_command()
-                    await self.send_message("daily_report", status_text)
+                    await self.send_direct_reply(status_text)
 
         return processed
 
