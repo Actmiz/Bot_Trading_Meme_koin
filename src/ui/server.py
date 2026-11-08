@@ -49,6 +49,16 @@ class BotUIController:
         self.cycle_count = 0
         self._bg_scan_task: asyncio.Future | None = None
 
+        # Bind live UI dashboard callback to Telegram listener
+        async def _ui_status() -> str:
+            return f"<pre>{self.bot.format_live_dashboard(cycle_num=self.cycle_count)}</pre>"
+
+        self.bot.notifier.start_background_listener(
+            on_kill_command=lambda r: self.bot.risk_controller.trigger_telegram_kill(r),
+            on_status_command=_ui_status,
+            loop=self.loop,
+        )
+
     def run_coro(self, coro: Any, timeout: float = 25.0) -> Any:
         """Schedule a coroutine on the bot's event loop and wait for its result."""
         future = asyncio.run_coroutine_threadsafe(coro, self.loop)

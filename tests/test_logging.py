@@ -168,11 +168,14 @@ async def test_telegram_command_polling_authorization():
         return "Bot status: OK"
 
     mock_updates = [
-        # Unauthorized chat_id -> must be ignored!
-        {"update_id": 1, "message": {"chat": {"id": "99999"}, "text": "/kill hacker attempt"}},
+        # Anyone can ask for their own chat ID with /getid
+        {"update_id": 1, "message": {"chat": {"id": "99999"}, "text": "/getid"}},
+        # Unauthorized chat_id -> blocked with warning!
+        {"update_id": 2, "message": {"chat": {"id": "99999"}, "text": "/kill hacker attempt"}},
         # Authorized chat_id -> must be processed!
-        {"update_id": 2, "message": {"chat": {"id": "12345"}, "text": "/status"}},
-        {"update_id": 3, "message": {"chat": {"id": "12345"}, "text": "/kill emergency drain"}},
+        {"update_id": 3, "message": {"chat": {"id": "12345"}, "text": "/status"}},
+        {"update_id": 4, "message": {"chat": {"id": "12345"}, "text": "/kill emergency drain"}},
+        {"update_id": 5, "message": {"chat": {"id": "12345"}, "text": "/start"}},
     ]
 
     processed = await notifier.poll_commands(
@@ -181,8 +184,15 @@ async def test_telegram_command_polling_authorization():
         mock_updates=mock_updates,
     )
 
-    assert processed == ["/status", "/kill"]
+    assert processed == ["/getid", "/status", "/kill", "/start"]
     assert kill_reasons == ["emergency drain"]
 
+    # Test background listener start and stop lifecycle
+    notifier.start_background_listener(on_kill_command=on_kill, on_status_command=on_status)
+    assert notifier._is_polling is True
+    await notifier.stop_background_listener()
+    assert notifier._is_polling is False
+
     await notifier.close()
+
 

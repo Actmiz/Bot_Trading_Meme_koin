@@ -208,6 +208,15 @@ class MemeTradingBot:
             self.position_manager.open_count,
         )
 
+        # Launch non-blocking Telegram command listener for instant /status, /start, /kill responses
+        async def _bot_status() -> str:
+            return f"<pre>{self.format_live_dashboard()}</pre>"
+
+        self.notifier.start_background_listener(
+            on_kill_command=lambda r: self.risk_controller.trigger_telegram_kill(r),
+            on_status_command=_bot_status,
+        )
+
     async def shutdown(self) -> None:
         """Gracefully close all network clients and database connections."""
         await self.detector.stop()
