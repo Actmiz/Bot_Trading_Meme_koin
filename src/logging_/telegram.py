@@ -122,7 +122,16 @@ class TelegramNotifier:
                 continue
 
             text = (msg.get("text") or "").strip()
-            if text.startswith("/kill"):
+            if text.startswith("/start") or text.startswith("/help"):
+                processed.append(text.split()[0])
+                welcome = (
+                    "👋 <b>Solana Meme Trading Bot Aktif</b>\n\n"
+                    "Perintah yang tersedia:\n"
+                    "• <code>/status</code> - Cek Live Equity, PnL, & Posisi Terbuka\n"
+                    "• <code>/kill</code> - Emergency Kill Switch (Tutup semua posisi & stop bot)\n"
+                )
+                await self.send_message("daily_report", welcome)
+            elif text.startswith("/kill"):
                 reason = text[len("/kill"):].strip() or "Operator sent /kill via Telegram"
                 processed.append("/kill")
                 if on_kill_command is not None:
