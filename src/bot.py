@@ -597,6 +597,15 @@ async def _main_async() -> None:
         logger.info("Bot running in %s mode (cycles=%d)", config.mode.value, args.cycles)
         count = 0
         while args.cycles == 0 or count < args.cycles:
+            # Always listen and respond to Telegram commands even if Auto-Scan is paused!
+            async def _get_status_text() -> str:
+                return f"<pre>{bot.format_live_dashboard(cycle_num=count)}</pre>"
+
+            await bot.notifier.poll_commands(
+                on_kill_command=lambda r: bot.risk_controller.trigger_telegram_kill(r),
+                on_status_command=_get_status_text,
+            )
+
             if ui_controller is not None and not ui_controller.is_running:
                 await asyncio.sleep(1.0)
                 continue
@@ -605,13 +614,6 @@ async def _main_async() -> None:
             if ui_controller is not None:
                 ui_controller.cycle_count = count
 
-            async def _get_status_text() -> str:
-                return f"<pre>{bot.format_live_dashboard(cycle_num=count)}</pre>"
-
-            await bot.notifier.poll_commands(
-                on_kill_command=lambda r: bot.risk_controller.trigger_telegram_kill(r),
-                on_status_command=_get_status_text,
-            )
             # Check critical risk boundaries (daily loss, drawdown, circuit breaker, kill switch)
             # Note: Max open positions should NOT kill the main loop; the bot must keep monitoring & managing existing open positions!
             risk_ok = await bot.risk_controller.check_can_trade()
