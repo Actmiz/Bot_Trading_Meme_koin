@@ -595,8 +595,10 @@ async def _main_async() -> None:
                 is_running=True,
             )
             ui_server = start_background_ui_server(ui_controller, host=args.host, port=args.port)
+            tg_status = "AKTIF (Mendengarkan /status, /start, /kill)" if bot.notifier._token else "NONAKTIF (Token belum diisi)"
             print(
-                f"\n🌐 Web UI Dashboard aktif di: http://127.0.0.1:{args.port} (Host bind: {args.host}:{args.port})\n",
+                f"\n🌐 Web UI Dashboard aktif di: http://127.0.0.1:{args.port} (Host bind: {args.host}:{args.port})\n"
+                f"🤖 Telegram Bot Command Listener: {tg_status}\n",
                 flush=True,
             )
         except OSError as e:

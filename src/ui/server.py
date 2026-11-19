@@ -1213,11 +1213,13 @@ async def _standalone_main() -> None:
     )
 
     server = start_background_ui_server(controller, host=args.host, port=args.port)
+    tg_status = "AKTIF (Mendengarkan /status, /start, /kill)" if bot.notifier._token else "NONAKTIF (Token belum diisi)"
     print(
         "\n" + "=" * 74 + "\n"
         f"  🌐 SOLANA MEME BOT — WEB UI DASHBOARD AKTIF\n"
         f"  👉 Buka di Browser: http://{args.host}:{args.port}\n"
         f"  Mode Saat Ini     : {config.mode.value} | Modal Awal: {args.capital:.2f} SOL\n"
+        f"  Telegram Bot      : {tg_status}\n"
         + "=" * 74 + "\n",
         flush=True,
     )

@@ -77,11 +77,14 @@ class TelegramNotifier:
             resp = await self._client.post(url, json=payload)
             if resp.status_code == 200:
                 logger.info("Telegram command reply sent successfully to %s", dest)
+                print(f"📤 [TELEGRAM] Balasan terkirim ke Chat ID: {dest}", flush=True)
                 return True
             logger.warning("Telegram send_direct_reply failed: HTTP %d %s", resp.status_code, resp.text)
+            print(f"⚠️ [TELEGRAM] Gagal mengirim balasan ke {dest}: HTTP {resp.status_code}", flush=True)
             return False
         except Exception as e:
             logger.error("Telegram send_direct_reply error: %s", e)
+            print(f"❌ [TELEGRAM] Error kirim ke {dest}: {e}", flush=True)
             return False
 
     async def close(self) -> None:
@@ -114,11 +117,14 @@ class TelegramNotifier:
             resp = await self._client.post(url, json=payload)
             if resp.status_code == 200:
                 logger.info("Telegram notification sent successfully to %s", self._chat_id)
+                print(f"📢 [TELEGRAM] Notifikasi [{event_category}] terkirim ke Chat ID: {self._chat_id}", flush=True)
                 return True
             logger.warning("Telegram sendMessage returned HTTP %d: %s", resp.status_code, resp.text)
+            print(f"⚠️ [TELEGRAM] Gagal kirim notifikasi [{event_category}]: HTTP {resp.status_code}", flush=True)
             return False
         except Exception as e:
             logger.error("Failed to send Telegram notification: %s", e)
+            print(f"❌ [TELEGRAM] Error kirim notifikasi [{event_category}]: {e}", flush=True)
             return False
 
     def start_background_listener(
@@ -138,7 +144,13 @@ class TelegramNotifier:
             return
 
         async def _loop() -> None:
+            masked_token = f"{self._token[:6]}...{self._token[-4:]}" if len(self._token) > 10 else "***"
+            auth_info = self._chat_id if self._chat_id else "Semua (Belum dikunci)"
             logger.info("Telegram background command listener started.")
+            print(
+                f"\n🤖 [TELEGRAM] Background Listener AKTIF | Bot Token: {masked_token} | Operator Chat ID: {auth_info}\n",
+                flush=True,
+            )
             while self._is_polling:
                 try:
                     if not self._token:
@@ -155,6 +167,7 @@ class TelegramNotifier:
                     logger.debug("Telegram polling loop error: %s", e)
                     await asyncio.sleep(2.0)
             logger.info("Telegram background command listener stopped.")
+            print("🤖 [TELEGRAM] Background Listener DIHENTIKAN.", flush=True)
 
         target_loop = loop
         if target_loop is None:
@@ -229,10 +242,12 @@ class TelegramNotifier:
                 continue
 
             logger.info("Received Telegram message: '%s' from chat_id=%s", text, sender_chat_id)
+            print(f"📩 [TELEGRAM] Pesan masuk dari Chat ID {sender_chat_id}: '{text}'", flush=True)
 
             # 1. /getid / /myid / /id — Always answer so user can discover their chat_id!
             if text.startswith("/getid") or text.startswith("/myid") or text.startswith("/id"):
                 processed.append("/getid")
+                print(f"🆔 [TELEGRAM] Membalas permintaan Chat ID ke: {sender_chat_id}", flush=True)
                 id_reply = (
                     f"🆔 <b>Chat ID Anda:</b> <code>{sender_chat_id}</code>\n\n"
                     f"Salin Chat ID di atas ke menu <b>Pengaturan Web UI</b> (Notifikasi Telegram) "
@@ -244,6 +259,7 @@ class TelegramNotifier:
             # 2. /start or /help
             if text.startswith("/start") or text.startswith("/help"):
                 processed.append(text.split()[0])
+                print(f"👋 [TELEGRAM] Membalas menu /start ke: {sender_chat_id}", flush=True)
                 welcome = (
                     "👋 <b>Solana Meme Trading Bot Aktif!</b>\n\n"
                     f"🆔 <b>Chat ID Anda:</b> <code>{sender_chat_id}</code>\n\n"
@@ -264,6 +280,10 @@ class TelegramNotifier:
                     sender_chat_id,
                     self._chat_id,
                 )
+                print(
+                    f"⛔ [TELEGRAM] Akses ditolak: Perintah '{text}' dari Chat ID tidak terdaftar ({sender_chat_id})",
+                    flush=True,
+                )
                 denied_msg = (
                     f"⛔ <b>Akses Ditolak</b>\n"
                     f"Chat ID <code>{sender_chat_id}</code> belum diizinkan sebagai operator bot.\n"
@@ -276,11 +296,13 @@ class TelegramNotifier:
             if text.startswith("/kill"):
                 reason = text[len("/kill"):].strip() or "Operator sent /kill via Telegram"
                 processed.append("/kill")
+                print(f"🛑 [TELEGRAM] EMERGENCY KILL SWITCH dieksekusi oleh {sender_chat_id}! Alasan: {reason}", flush=True)
                 if on_kill_command is not None:
                     await on_kill_command(reason)
                 await self.send_direct_reply(f"🛑 <b>Kill switch activated:</b> {reason}", target_chat_id=sender_chat_id)
             elif text.startswith("/status"):
                 processed.append("/status")
+                print(f"📊 [TELEGRAM] Operator {sender_chat_id} meminta /status, mengirim ringkasan dashboard...", flush=True)
                 if on_status_command is not None:
                     status_text = await on_status_command()
                     await self.send_direct_reply(status_text, target_chat_id=sender_chat_id)
